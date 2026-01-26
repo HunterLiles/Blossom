@@ -24,12 +24,9 @@ private:
   bool isSprinting = false;
   // --------------------
   Texture2D run =
-      LoadTexture("/home/hunter/projects/personal/Documents/RaylibProjects/"
-                  "NewTest/assets/player run 48x48.png");
+      LoadTexture("/home/hunter/BlossomCPP/assets/player run 48x48.png");
   Texture2D idle =
-      LoadTexture("/home/hunter/projects/personal/Documents/RaylibProjects/"
-                  "NewTest/assets/Player Idle 48x48.png");
+      LoadTexture("/home/hunter/BlossomCPP/assets/Player Idle 48x48.png");
   Texture2D jump =
-      LoadTexture("/home/hunter/projects/personal/Documents/RaylibProjects/"
-                  "NewTest/assets/player new jump 48x48.png");
+      LoadTexture("/home/hunter/BlossomCPP/assets/player new jump 48x48.png");
 };

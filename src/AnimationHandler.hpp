@@ -18,8 +18,7 @@ public:
 
 private:
   Texture2D currTexture =
-      LoadTexture("/home/hunter/projects/personal/Documents/RaylibProjects/"
-                  "NewTest/assets/Player Idle 48x48.png");
+      LoadTexture("/home/hunter/BlossomCPP/assets/Player Idle 48x48.png");
   // --------------------
   Rectangle frameRec;
   // --------------------

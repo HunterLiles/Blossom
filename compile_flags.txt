@@ -1,3 +1,0 @@
--Iinclude
--std=c++20
--Wall

@@ -9,6 +9,7 @@
 #define NUM_ROWS 8
 #define PIXELS 32
 #define MAX_ENV 25
+#define MAX_NPC 25
 
 typedef enum { IDLE = 0, WALK, RUN, ATTACK, NUM_ANIM } AnimState;
 typedef enum { NW = 0, W, SW, S, SE, E, NE, N, NUM_DIR } Direction;
@@ -21,6 +22,12 @@ typedef struct {
   AnimState currState;
   Direction currDir;
 } player;
+
+typedef struct {
+  Vector2 pos;
+  Rectangle rec;
+  Texture2D tex;
+} NPC;
 
 typedef struct {
   Vector2 pos;
@@ -64,14 +71,15 @@ int main(void) {
       {.tex = envTex, .rec = (Rectangle){272, 490, 36, 54}},
       {.tex = envTex, .rec = (Rectangle){736, 752, PIXELS, PIXELS}}};
 
+  NPC npc[MAX_NPC] = {
+      {(Vector2){250, 250}, (Rectangle){0, 96, 32, 32}, p.tex[IDLE]}};
+
   for (int i = 0; i < 512; i++) {
     for (int j = 0; j < 512; j++) {
       back_grid[i][j] = (i % 5 == 0 && j % 5 == 0) ? (Grid){GRASS, LEAVES}
                                                    : (Grid){GRASS, -1};
       fore_grid[i][j] =
-          (i % 5 == 0 && j % 5 == 0)
-              ? (Grid){TREE, -1}
-              : (Grid){-1, -1}; // How can I center the drawing of this?
+          (i % 5 == 0 && j % 5 == 0) ? (Grid){TREE, -1} : (Grid){-1, -1};
     }
   }
 
@@ -105,16 +113,15 @@ int main(void) {
     DrawText("Alpha", (float)GetScreenWidth() - 80.0f, 0, 24, GRAY);
 
     // Dynamic textures
-    DrawTextureRec(p.tex[p.currState], p.rec, p.pos, WHITE); // player
+    DrawTextureRec(npc[0].tex, npc[0].rec, npc[0].pos, WHITE); // NPC
+    DrawTextureRec(p.tex[p.currState], p.rec, p.pos, WHITE);   // player
 
     // Foreground textures
     for (int i = 0; i < 64; i++) {
       for (int j = 0; j < 64; j++) {
         DrawTextureRec(
             env[fore_grid[i][j].layer1].tex, env[fore_grid[i][j].layer1].rec,
-            (Vector2){
-                (float)(i * PIXELS) - env[fore_grid[i][j].layer1].tex.width,
-                (float)(j * PIXELS) - env[fore_grid[i][j].layer1].tex.height},
+            (Vector2){(float)(i * PIXELS), (float)(j * PIXELS) - PIXELS},
             WHITE);
         DrawRectangleLines((float)(i * PIXELS), (float)(j * PIXELS), PIXELS,
                            PIXELS, GRAY);

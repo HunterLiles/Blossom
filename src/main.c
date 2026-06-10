@@ -12,7 +12,7 @@
 
 typedef enum { IDLE = 0, WALK, RUN, ATTACK, NUM_ANIM } AnimState;
 typedef enum { NW = 0, W, SW, S, SE, E, NE, N, NUM_DIR } Direction;
-typedef enum { GRASS = 0, TREE, GTREE, LTREE, GLTREE, NUM_ENV } EnvType;
+typedef enum { GRASS = 0, TREE, GTREE, LEAVES, LTREE, GLTREE, NUM_ENV } EnvType;
 
 typedef struct {
   Vector2 pos;
@@ -28,35 +28,50 @@ typedef struct {
   Rectangle rec;
 } Environment;
 
+typedef struct {
+  int layer1, layer2;
+} Grid;
+
 player p;
 
 void player_anim(player *p, int *currFrame, int *frameCounter, int frameSpeed);
 Vector2 player_move(player *p, float speed, float sprint, float dash);
-void player_init(player *p);
 
 int main(void) {
   ChangeDirectory(TextFormat("%s/..", GetApplicationDirectory()));
   InitWindow(SWIDTH, SHEIGHT, "Blossom");
   GuiLoadStyle("styles/style_dark.rgs");
 
-  player_init(&p);
+  // Player Init
+  p.pos = (Vector2){(float)GetScreenWidth() / 2.0f,
+                    (float)GetScreenHeight() / 2.0f};
+  p.currState = IDLE;
+  p.currDir = S;
+  p.tex[IDLE] = LoadTexture("assets/player-anim/idle.png");
+  p.tex[WALK] = LoadTexture("assets/player-anim/walk.png");
+  p.tex[RUN] = LoadTexture("assets/player-anim/run.png");
+  p.tex[ATTACK] = LoadTexture("assets/player-anim/attack.png");
+  p.rec = (Rectangle){0, 0, PIXELS, PIXELS};
 
-  int ground_grid[512][512];
-  int foliage_grid[512][512];
+  // Tilemap setup
+  Grid back_grid[512][512];
+  Grid fore_grid[512][512];
 
   Texture2D envTex = LoadTexture("assets/trees.png");
   Environment env[MAX_ENV] = {
       {.tex = envTex, .rec = (Rectangle){352, 576, PIXELS, PIXELS}},
-      {.tex = envTex, .rec = (Rectangle){0, 0, 80, 144}}};
+      {.tex = envTex, .rec = (Rectangle){224, 490, 36, 54}},
+      {.tex = envTex, .rec = (Rectangle){272, 490, 36, 54}},
+      {.tex = envTex, .rec = (Rectangle){736, 752, PIXELS, PIXELS}}};
 
   for (int i = 0; i < 512; i++) {
     for (int j = 0; j < 512; j++) {
-      ground_grid[i][j] = GRASS;
-      if (i % 5 == 0 && j % 5 == 0) {
-        foliage_grid[i][j] = TREE;
-      } else {
-        foliage_grid[i][j] = -1;
-      }
+      back_grid[i][j] = (i % 5 == 0 && j % 5 == 0) ? (Grid){GRASS, LEAVES}
+                                                   : (Grid){GRASS, -1};
+      fore_grid[i][j] =
+          (i % 5 == 0 && j % 5 == 0)
+              ? (Grid){TREE, -1}
+              : (Grid){-1, -1}; // How can I center the drawing of this?
     }
   }
 
@@ -78,9 +93,12 @@ int main(void) {
     //  Background textures
     for (int i = 0; i < 64; i++) {
       for (int j = 0; j < 64; j++) {
-        DrawTextureRec(env[ground_grid[i][j]].tex, env[ground_grid[i][j]].rec,
-                       (Vector2){(float)(i * PIXELS), (float)(j * PIXELS)},
-                       WHITE);
+        DrawTextureRec(
+            env[back_grid[i][j].layer1].tex, env[back_grid[i][j].layer1].rec,
+            (Vector2){(float)(i * PIXELS), (float)(j * PIXELS)}, WHITE);
+        DrawTextureRec(
+            env[back_grid[i][j].layer2].tex, env[back_grid[i][j].layer2].rec,
+            (Vector2){(float)(i * PIXELS), (float)(j * PIXELS)}, WHITE);
       }
     }
 
@@ -92,9 +110,14 @@ int main(void) {
     // Foreground textures
     for (int i = 0; i < 64; i++) {
       for (int j = 0; j < 64; j++) {
-        DrawTextureRec(env[foliage_grid[i][j]].tex, env[foliage_grid[i][j]].rec,
-                       (Vector2){(float)(i * PIXELS), (float)(j * PIXELS)},
-                       WHITE);
+        DrawTextureRec(
+            env[fore_grid[i][j].layer1].tex, env[fore_grid[i][j].layer1].rec,
+            (Vector2){
+                (float)(i * PIXELS) - env[fore_grid[i][j].layer1].tex.width,
+                (float)(j * PIXELS) - env[fore_grid[i][j].layer1].tex.height},
+            WHITE);
+        DrawRectangleLines((float)(i * PIXELS), (float)(j * PIXELS), PIXELS,
+                           PIXELS, GRAY);
       }
     }
 
@@ -107,21 +130,11 @@ int main(void) {
 
   for (int i = 0; i < NUM_ANIM; i++)
     UnloadTexture(p.tex[i]);
+  for (int i = 0; i < NUM_ENV; i++)
+    UnloadTexture(env[i].tex);
 
   CloseWindow();
   return 0;
-}
-
-void player_init(player *p) {
-  p->pos = (Vector2){(float)GetScreenWidth() / 2.0f,
-                     (float)GetScreenHeight() / 2.0f};
-  p->currState = IDLE;
-  p->currDir = S;
-  p->tex[IDLE] = LoadTexture("assets/player-anim/idle.png");
-  p->tex[WALK] = LoadTexture("assets/player-anim/walk.png");
-  p->tex[RUN] = LoadTexture("assets/player-anim/run.png");
-  p->tex[ATTACK] = LoadTexture("assets/player-anim/attack.png");
-  p->rec = (Rectangle){0, 0, PIXELS, PIXELS};
 }
 
 void player_anim(player *p, int *currFrame, int *frameCounter, int frameSpeed) {

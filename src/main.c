@@ -4,22 +4,15 @@
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 
-const int NUM_ROWS = 8;
-const int PIXELS = 32;
+#define SWIDTH 1920
+#define SHEIGHT 1080
+#define NUM_ROWS 8
+#define PIXELS 32
+#define MAX_ENV 25
 
 typedef enum { IDLE = 0, WALK, RUN, ATTACK, NUM_ANIM } AnimState;
-
-typedef enum {
-  NW = 0,
-  W,
-  SW,
-  S,
-  SE,
-  E,
-  NE,
-  N,
-  NUM_DIR
-} Direction; // Get attack to have the correct directions.
+typedef enum { NW = 0, W, SW, S, SE, E, NE, N, NUM_DIR } Direction;
+typedef enum { GRASS = 0, TREE, GTREE, LTREE, GLTREE, NUM_ENV } EnvType;
 
 typedef struct {
   Vector2 pos;
@@ -29,23 +22,43 @@ typedef struct {
   Direction currDir;
 } player;
 
+typedef struct {
+  Vector2 pos;
+  Texture2D tex;
+  Rectangle rec;
+} Environment;
+
 player p;
 
 void player_anim(player *p, int *currFrame, int *frameCounter, int frameSpeed);
-Vector2 player_move(player *p, float speed, float sprint);
+Vector2 player_move(player *p, float speed, float sprint, float dash);
 void player_init(player *p);
 
 int main(void) {
   ChangeDirectory(TextFormat("%s/..", GetApplicationDirectory()));
-  InitWindow(1280, 720, "Blossom");
+  InitWindow(SWIDTH, SHEIGHT, "Blossom");
   GuiLoadStyle("styles/style_dark.rgs");
-  Texture2D background = LoadTexture("assets/nature/nature_4/origbig.png");
-
-  Texture2D enviroment[3] = {
-      LoadTexture(""), LoadTexture(""),
-      LoadTexture("")}; // Is this the best way to do this?
 
   player_init(&p);
+
+  int ground_grid[512][512];
+  int foliage_grid[512][512];
+
+  Texture2D envTex = LoadTexture("assets/trees.png");
+  Environment env[MAX_ENV] = {
+      {.tex = envTex, .rec = (Rectangle){352, 576, PIXELS, PIXELS}},
+      {.tex = envTex, .rec = (Rectangle){0, 0, 80, 144}}};
+
+  for (int i = 0; i < 512; i++) {
+    for (int j = 0; j < 512; j++) {
+      ground_grid[i][j] = GRASS;
+      if (i % 5 == 0 && j % 5 == 0) {
+        foliage_grid[i][j] = TREE;
+      } else {
+        foliage_grid[i][j] = -1;
+      }
+    }
+  }
 
   int currFrame = 0;
   int frameCounter = 0;
@@ -56,26 +69,34 @@ int main(void) {
 
     // Everything that isn't a texture
     player_anim(&p, &currFrame, &frameCounter, 8);
-    p.pos = Vector2Add(p.pos, player_move(&p, 3.0f, 50.0f));
+    p.pos = Vector2Add(p.pos, player_move(&p, 3.0f, 1.5f, 50.0f));
 
     BeginDrawing();
 
     ClearBackground(RAYWHITE);
 
-    DrawText("Alpha", (float)GetScreenWidth() / 2.0f - 48.0f,
-             (float)GetScreenHeight() / 2.0f - 60.0f, 48, GRAY);
-    DrawTexture(background, 0, 0, WHITE);
+    //  Background textures
+    for (int i = 0; i < 64; i++) {
+      for (int j = 0; j < 64; j++) {
+        DrawTextureRec(env[ground_grid[i][j]].tex, env[ground_grid[i][j]].rec,
+                       (Vector2){(float)(i * PIXELS), (float)(j * PIXELS)},
+                       WHITE);
+      }
+    }
 
-    //  Static textures
-    DrawRectanglePro(
-        (Rectangle){0, 0, GetScreenWidth(), GetScreenHeight() / 2.0f},
-        (Vector2){0, (-1) * (GetScreenHeight() / 2.0f)}, 0, DARKBROWN);
-    DrawRectangleLinesEx(
-        (Rectangle){0, 0, GetScreenWidth(), GetScreenHeight() / 2.0f}, 5.0f,
-        BLACK);
+    DrawText("Alpha", (float)GetScreenWidth() - 80.0f, 0, 24, GRAY);
 
     // Dynamic textures
     DrawTextureRec(p.tex[p.currState], p.rec, p.pos, WHITE); // player
+
+    // Foreground textures
+    for (int i = 0; i < 64; i++) {
+      for (int j = 0; j < 64; j++) {
+        DrawTextureRec(env[foliage_grid[i][j]].tex, env[foliage_grid[i][j]].rec,
+                       (Vector2){(float)(i * PIXELS), (float)(j * PIXELS)},
+                       WHITE);
+      }
+    }
 
     // UI.
     GuiPanel((Rectangle){10, 10, 65, 50}, "Settings");
@@ -121,18 +142,17 @@ void player_anim(player *p, int *currFrame, int *frameCounter, int frameSpeed) {
   }
 }
 
-Vector2 player_move(player *p, float speed, float sprint) {
+Vector2 player_move(player *p, float speed, float sprint, float dash) {
   Vector2 move = Vector2Zero();
-  p->pos.y =
-      Clamp(p->pos.y, GetScreenHeight() / 2.0f, GetScreenHeight() - PIXELS);
+  p->pos.y = Clamp(p->pos.y, 0.0f, GetScreenHeight() - PIXELS);
   p->pos.x = Clamp(p->pos.x, 0.0f, GetScreenWidth() - PIXELS);
 
+  speed = (IsKeyDown(KEY_LEFT_SHIFT)) ? speed * sprint : speed;
   move.x = (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) ? move.x - speed : move.x;
   move.x = (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) ? move.x + speed : move.x;
   move.y = (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) ? move.y - speed : move.y;
   move.y = (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) ? move.y + speed : move.y;
-  move = IsKeyPressed(KEY_LEFT_SHIFT) ? Vector2Scale(move, sprint)
-                                      : move; // turn this back into a sprint.
+  move = IsKeyPressed(KEY_SPACE) ? Vector2Scale(move, dash) : move;
 
   p->currState = (move.x == 0 && move.y == 0) ? IDLE : p->currState;
   if (move.x > 0) {

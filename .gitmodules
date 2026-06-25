@@ -1,0 +1,12 @@
+[submodule "include/thirdparty/imgui"]
+	path = include/thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "include/thirdparty/rlImGui"]
+	path = include/thirdparty/rlImGui
+	url = https://github.com/raylib-extras/rlImGui.git
+[submodule "include/thirdparty/raylib-raygui-cmake-template"]
+	path = include/thirdparty/raylib-raygui-cmake-template
+	url = https://github.com/brunosxs/raylib-raygui-cmake-template.git
+[submodule "include/thirdparty/raylib"]
+	path = include/thirdparty/raylib
+	url = https://github.com/raysan5/raylib.git

@@ -1,13 +1,37 @@
-cmake_minimum_required(VERSION 3.15)
-project(blossom C)
+cmake_minimum_required(VERSION 3.14...4.3)
+project(blossom)
 
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_C_STANDARD 23)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(SOURCES main.c src/controller.c src/animation.c src/tilemap.c src/gui.c)
+set(OPENGL_VERSION
+    "4.3"
+    CACHE STRING "Force OpenGL 4.3 for compute shaders" FORCE)
 
-find_package(raylib REQUIRED)
+add_subdirectory(include/thirdparty/raylib)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE src/headers)
+include(FetchContent)
+FetchContent_Declare(
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG docking)
+FetchContent_Declare(
+  rlimgui
+  GIT_REPOSITORY https://github.com/raylib-extras/rlImGui.git
+  GIT_TAG Raylib_6_0)
+
+FetchContent_MakeAvailable(imgui)
+FetchContent_MakeAvailable(rlimgui)
+
+set(SOURCES main.cpp)
+
+set(IMGUI
+    ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI}
+                               ${rlimgui_SOURCE_DIR}/rlImGui.cpp)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+target_include_directories(
+  ${PROJECT_NAME} PRIVATE ${rlimgui_SOURCE_DIR} ${imgui_SOURCE_DIR}
+                          ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -3,9 +3,6 @@ project(blossom)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(OPENGL_VERSION
-    "4.3"
-    CACHE STRING "Force OpenGL 4.3 for compute shaders" FORCE)
 
 add_subdirectory(include/thirdparty/raylib)
 
@@ -22,13 +19,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(imgui)
 FetchContent_MakeAvailable(rlimgui)
 
-set(SOURCES main.cpp)
-
 set(IMGUI
     ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI}
+add_executable(${PROJECT_NAME} main.cpp ${IMGUI}
                                ${rlimgui_SOURCE_DIR}/rlImGui.cpp)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)

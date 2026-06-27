@@ -1,5 +1,4 @@
 #include "raylib.h"
-#include "raymath.h"
 
 #include "animation.hpp"
 #include "controller.hpp"
@@ -7,42 +6,41 @@
 #include "tilemap.hpp"
 
 int main(void) {
-  ChangeDirectory(TextFormat("%s/..", GetApplicationDirectory()));
   InitWindow(1920, 1080, "Blossom");
   gui gui;
-
   tilemap map;
-  auto level =
-      map.tilemap_init("first-level"); // TODO : load each level into some
-                                       // vector to be used for drawing.
-  std::vector<std::string> levelNames = {
-      "level one", "level two"}; // TODO : maybe make it to where this is able
-                                 // to read the level file names instead?
+
+  std::vector<std::string> levelNames = {"one", "two", "three"};
+  int currLevel = 0;
+  std::vector<tilemap::MapData> level;
+  for (int i = 0; i < levelNames.size(); i++) {
+    tilemap::MapData levelData = map.init(levelNames[i]);
+    level.push_back(levelData);
+  }
 
   // NOTE : Enviornment Init
-  Texture2D envTex = LoadTexture("resources/trees.png");
-  std::vector<Rectangle> envRec = {{352, 576, 32, 32}, {224, 306, 176, 176}};
+  Texture2D envTex = LoadTexture("../resources/trees.png");
+  Rectangle envRec[10] = {{352, 576, 32, 32}, {224, 306, 176, 176}};
 
   // NOTE : Player Init
-  controller player;
-  player.pos = {GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
-  player.speed = 150.0f;
-  player.sprint = 1.5f;
-  player.dash = 500.0f;
-  player.state = IDLE;
-  player.dir = S;
-  player.cam = {player.pos, player.pos, 0.0f, 1.0f};
+  controller player = {{GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f},
+                       150.0f,
+                       1.5f,
+                       500.0f,
+                       IDLE,
+                       S,
+                       {player.pos, player.pos, 0.0f, 1.0f}};
 
-  animation playerAnim;
-  playerAnim.counter = 0;
-  playerAnim.frame = 0;
-  playerAnim.frameSpeed = 8;
-  playerAnim.rec = {0, 0, 32, 32};
-  playerAnim.tex = {LoadTexture("resources/player-anim/idle.png"),
-                    LoadTexture("resources/player-anim/walk.png"),
-                    LoadTexture("resources/player-anim/run.png")};
+  animation playerAnim = {{LoadTexture("../resources/player-anim/idle.png"),
+                           LoadTexture("../resources/player-anim/walk.png"),
+                           LoadTexture("../resources/player-anim/run.png")},
+                          {0, 0, 32, 32},
+                          0,
+                          0,
+                          8};
 
   // NOTE : NPC Init
+  animation npcAnim[10] = {{{playerAnim.tex[0]}, {0, 0, 32, 32}, 0, 0, 8}};
 
   SetTargetFPS(180);
 
@@ -50,7 +48,8 @@ int main(void) {
 
     // NOTE : Pre-rendering things
     playerAnim.anim_update(player.dir, player.state);
-    player.pos = Vector2Add(player.pos, player.contr_update(&playerAnim.rec));
+    npcAnim[0].anim_update(S, IDLE);
+    player.contr_update(&player.pos, &playerAnim.rec);
     player.cam_update(player);
 
     BeginDrawing();
@@ -60,7 +59,7 @@ int main(void) {
     // NOTE : Background textures
     for (int i = 0; i < 128; i++) {
       for (int j = 0; j < 128; j++) {
-        if (level.background[i][j] == 1)
+        if (level[currLevel].background[i][j] == 1)
           DrawTextureRec(envTex, envRec[0], (Vector2){i * 32.0f, j * 32.0f},
                          WHITE);
       }
@@ -69,11 +68,13 @@ int main(void) {
     // NOTE : Player and NPC
     DrawTextureRec(playerAnim.tex[player.state], playerAnim.rec, player.pos,
                    WHITE);
+    DrawTextureRec(npcAnim[1].tex[IDLE], npcAnim[1].rec,
+                   {10 * 32.0f, 10 * 32.0f}, WHITE);
 
     // NOTE : Foreground textures
     for (int i = 0; i < 128; i++) {
       for (int j = 0; j < 128; j++) {
-        if (level.foreground[i][j] == 2)
+        if (level[currLevel].foreground[i][j] == 2)
           DrawTextureRec(envTex, envRec[1], (Vector2){i * 32.0f, j * 32.0f},
                          WHITE);
       }
@@ -84,13 +85,16 @@ int main(void) {
     EndMode2D();
 
     // NOTE : Static UI.
-    gui.guiSettings(player.pos, levelNames, 0);
+    rlImGuiBegin();
+    gui.guiSettings(player.pos, levelNames, &currLevel);
+    rlImGuiEnd();
 
     EndDrawing();
   }
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++) {
     UnloadTexture(playerAnim.tex[i]);
+  }
   UnloadTexture(envTex);
 
   CloseWindow();

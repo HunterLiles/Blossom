@@ -18,9 +18,9 @@ public:
   Direction dir;
   Camera2D cam;
 
-  Vector2 contr_update(Rectangle *rec) {
-    pos.y = Clamp(pos.y, 0.0f, (128 * 32) - rec->height);
-    pos.x = Clamp(pos.x, 0.0f, (128 * 32) - rec->width);
+  void contr_update(Vector2 *pos, Rectangle *rec) {
+    pos->y = Clamp(pos->y, 0.0f, (128 * 32) - rec->height);
+    pos->x = Clamp(pos->x, 0.0f, (128 * 32) - rec->width);
     Vector2 move = Vector2Zero();
 
     float currSpeed = speed * GetFrameTime();
@@ -30,6 +30,7 @@ public:
     move.y = (IsKeyDown(KEY_UP)) ? move.y - currSpeed : move.y;
     move.y = (IsKeyDown(KEY_DOWN)) ? move.y + currSpeed : move.y;
     move = IsKeyPressed(KEY_SPACE) ? Vector2Scale(move, dash) : move;
+    *pos = Vector2Add(*pos, move);
 
     state = (move.x == 0 && move.y == 0) ? IDLE : state;
     if (move.x > 0) {
@@ -67,8 +68,6 @@ public:
     if (IsKeyDown(KEY_LEFT_SHIFT) &&
         ((move.x > 0 || move.y > 0) || (move.x < 0 || move.y < 0)))
       state = RUN;
-
-    return move;
   }
 
   void cam_update(controller cont) {

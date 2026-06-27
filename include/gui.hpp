@@ -9,35 +9,23 @@ class gui {
 
 private:
 public:
-  gui() {
-    rlImGuiSetup(true);
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-  };
+  gui() { rlImGuiSetup(true); };
   ~gui() { rlImGuiShutdown(); };
 
   void guiSettings(Vector2 pos, std::vector<std::string> levels,
-                   int currLevel) {
-    rlImGuiBegin();
-
-    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
-                                 ImGuiDockNodeFlags_PassthruCentralNode);
-
-    ImGui::SetNextWindowPos({100, 50}, ImGuiCond_Once);
+                   int *currLevel) {
     ImGui::Begin("Settings");
     ImGui::Text("FPS : %.2d", GetFPS());
     ImGui::Text("X : %.2f | Y : %.2f", pos.x, pos.y);
-    ImGui::End();
 
-    ImGui::SetNextWindowPos({100, 150}, ImGuiCond_Once);
-    ImGui::Begin("Level");
-    if (ImGui::BeginCombo("Level", levels[currLevel].c_str())) {
+    if (ImGui::BeginCombo("Level", levels[*currLevel].c_str())) {
       ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign,
                           ImVec2(0.5f, 0.5f));
 
       for (int n = 0; n < levels.size(); n++) {
-        bool is_selected = (currLevel == n);
+        bool is_selected = (*currLevel == n);
         if (ImGui::Selectable(levels[n].c_str(), is_selected)) {
-          currLevel = n;
+          *currLevel = n;
         }
         if (is_selected)
           ImGui::SetItemDefaultFocus();
@@ -47,7 +35,5 @@ public:
     }
 
     ImGui::End();
-
-    rlImGuiEnd();
   }
 };

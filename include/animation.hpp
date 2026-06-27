@@ -1,5 +1,4 @@
 #include "raylib.h"
-#include <vector>
 
 class animation {
 private:
@@ -7,7 +6,7 @@ public:
   animation() = default;
   ~animation() = default;
 
-  std::vector<Texture2D> tex;
+  Texture2D tex[5];
   Rectangle rec;
   int counter;
   int frame;

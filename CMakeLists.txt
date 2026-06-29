@@ -4,7 +4,7 @@ project(blossom)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_subdirectory(include/thirdparty/raylib)
+find_package(raylib REQUIRED)
 
 include(FetchContent)
 FetchContent_Declare(

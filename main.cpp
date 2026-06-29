@@ -1,4 +1,5 @@
 #include "raylib.h"
+#include "rlImGui.h"
 
 #include "animation.hpp"
 #include "controller.hpp"
@@ -6,15 +7,18 @@
 #include "tilemap.hpp"
 
 int main(void) {
+  SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
   InitWindow(1920, 1080, "Blossom");
-  gui gui;
+
+  gui gui(true);
   tilemap map;
 
+  // NOTE : Tilemap stuff
   std::vector<std::string> levelNames = {"one", "two", "three"};
   int currLevel = 0;
   std::vector<tilemap::MapData> level;
   for (int i = 0; i < levelNames.size(); i++) {
-    tilemap::MapData levelData = map.init(levelNames[i]);
+    auto levelData = map.init(levelNames[i]);
     level.push_back(levelData);
   }
 
@@ -42,8 +46,6 @@ int main(void) {
   // NOTE : NPC Init
   animation npcAnim[10] = {{{playerAnim.tex[0]}, {0, 0, 32, 32}, 0, 0, 8}};
 
-  SetTargetFPS(180);
-
   while (!WindowShouldClose()) {
 
     // NOTE : Pre-rendering things
@@ -57,28 +59,25 @@ int main(void) {
     BeginMode2D(player.cam);
 
     // NOTE : Background textures
-    for (int i = 0; i < 128; i++) {
-      for (int j = 0; j < 128; j++) {
+    for (size_t i{}; i < TILE; i++)
+      for (size_t j{}; j < TILE; j++)
         if (level[currLevel].background[i][j] == 1)
           DrawTextureRec(envTex, envRec[0], (Vector2){i * 32.0f, j * 32.0f},
                          WHITE);
-      }
-    }
 
     // NOTE : Player and NPC
     DrawTextureRec(playerAnim.tex[player.state], playerAnim.rec, player.pos,
                    WHITE);
-    DrawTextureRec(npcAnim[1].tex[IDLE], npcAnim[1].rec,
+    DrawTextureRec(npcAnim[0].tex[IDLE], npcAnim[0].rec,
                    {10 * 32.0f, 10 * 32.0f}, WHITE);
 
     // NOTE : Foreground textures
-    for (int i = 0; i < 128; i++) {
-      for (int j = 0; j < 128; j++) {
-        if (level[currLevel].foreground[i][j] == 2)
+    for (size_t i{}; i < TILE; i++)
+      for (size_t j{}; j < TILE; j++)
+        if (level[currLevel].foreground[i][j] == 1)
+          // FIX : How do I move the texture by width / 2 and -height?
           DrawTextureRec(envTex, envRec[1], (Vector2){i * 32.0f, j * 32.0f},
                          WHITE);
-      }
-    }
 
     // NOTE : Dynamic UI
 
@@ -86,17 +85,17 @@ int main(void) {
 
     // NOTE : Static UI.
     rlImGuiBegin();
-    gui.guiSettings(player.pos, levelNames, &currLevel);
+    gui.settings(player.pos, levelNames, &currLevel);
     rlImGuiEnd();
 
     EndDrawing();
   }
 
-  for (int i = 0; i < 3; i++) {
+  for (size_t i{}; i < 3; i++)
     UnloadTexture(playerAnim.tex[i]);
-  }
   UnloadTexture(envTex);
 
+  gui.~gui();
   CloseWindow();
   return 0;
 }

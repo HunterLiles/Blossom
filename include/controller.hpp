@@ -77,8 +77,9 @@ public:
     cam.zoom = (cam.zoom > 3.0f) ? cam.zoom = 3.0f : cam.zoom;
     cam.zoom = (cam.zoom < 1.0f) ? cam.zoom = 1.0f : cam.zoom;
 
-    SetMouseOffset((cam.target.x * cam.zoom) - cam.offset.x,
-                   (cam.target.y * cam.zoom) - cam.offset.y);
-    SetMouseScale(1.0f / cam.zoom, 1.0f / cam.zoom);
+    // FIX : Doesn't work, scailing is wrong
+    // SetMouseOffset((cam.target.x * cam.zoom) - cam.offset.x,
+    //                (cam.target.y * cam.zoom) - cam.offset.y);
+    // SetMouseScale(1.0f / cam.zoom, 1.0f / cam.zoom);
   }
 };

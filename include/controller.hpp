@@ -18,9 +18,9 @@ public:
   Direction dir;
   Camera2D cam;
 
-  void contr_update(Vector2 *pos, Rectangle *rec) {
-    pos->y = Clamp(pos->y, 0.0f, (128 * 32) - rec->height);
-    pos->x = Clamp(pos->x, 0.0f, (128 * 32) - rec->width);
+  void contr_update(Rectangle *rec) {
+    pos.y = Clamp(pos.y, 0.0f, (128 * 32) - rec->height);
+    pos.x = Clamp(pos.x, 0.0f, (128 * 32) - rec->width);
     Vector2 move = Vector2Zero();
 
     float currSpeed = speed * GetFrameTime();
@@ -30,7 +30,13 @@ public:
     move.y = (IsKeyDown(KEY_UP)) ? move.y - currSpeed : move.y;
     move.y = (IsKeyDown(KEY_DOWN)) ? move.y + currSpeed : move.y;
     move = IsKeyPressed(KEY_SPACE) ? Vector2Scale(move, dash) : move;
-    *pos = Vector2Add(*pos, move);
+    pos = Vector2Add(pos, move);
+
+    cam.target = pos;
+    cam.zoom = (IsKeyDown(KEY_EQUAL)) ? cam.zoom + 0.01f : cam.zoom;
+    cam.zoom = (IsKeyDown(KEY_MINUS)) ? cam.zoom - 0.01f : cam.zoom;
+    cam.zoom = (cam.zoom > 3.0f) ? cam.zoom = 3.0f : cam.zoom;
+    cam.zoom = (cam.zoom < 1.0f) ? cam.zoom = 1.0f : cam.zoom;
 
     state = (move.x == 0 && move.y == 0) ? IDLE : state;
     if (move.x > 0) {
@@ -65,21 +71,9 @@ public:
       state = WALK;
       dir = NW;
     }
-    if (IsKeyDown(KEY_LEFT_SHIFT) &&
-        ((move.x > 0 || move.y > 0) || (move.x < 0 || move.y < 0)))
-      state = RUN;
-  }
-
-  void cam_update(controller cont) {
-    cam.target = cont.pos;
-    cam.zoom = (IsKeyDown(KEY_EQUAL)) ? cam.zoom + 0.01f : cam.zoom;
-    cam.zoom = (IsKeyDown(KEY_MINUS)) ? cam.zoom - 0.01f : cam.zoom;
-    cam.zoom = (cam.zoom > 3.0f) ? cam.zoom = 3.0f : cam.zoom;
-    cam.zoom = (cam.zoom < 1.0f) ? cam.zoom = 1.0f : cam.zoom;
-
-    // FIX : Doesn't work, scailing is wrong
-    // SetMouseOffset((cam.target.x * cam.zoom) - cam.offset.x,
-    //                (cam.target.y * cam.zoom) - cam.offset.y);
-    // SetMouseScale(1.0f / cam.zoom, 1.0f / cam.zoom);
+    state = (IsKeyDown(KEY_LEFT_SHIFT) &&
+             ((move.x > 0 || move.y > 0) || (move.x < 0 || move.y < 0)))
+                ? RUN
+                : state;
   }
 };

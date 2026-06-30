@@ -26,7 +26,8 @@ int main(void) {
 
     // NOTE : Enviornment Init
     Texture2D envTex = LoadTexture("../resources/trees.png");
-    Rectangle envRec[10] = {{352, 576, 32, 32}, {224, 306, 176, 176}};
+    std::vector<Rectangle> envRec = {
+        {}, {352, 576, 32, 32}, {224, 306, 176, 176}};
 
     // NOTE : Player Init
     controller player = {{GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f},
@@ -57,22 +58,48 @@ int main(void) {
       ClearBackground(BLACK);
 
       // NOTE : Background textures
-      for (size_t i{}; i < tilemap::TILE; i++)
-        for (size_t j{}; j < tilemap::TILE; j++)
-          if (level[gui.currLevel].background[i][j] == 1)
-            DrawTextureRec(envTex, envRec[0], (Vector2){i * 32.0f, j * 32.0f},
+      for (size_t i{}; i < tilemap::TILE; i++) {
+        for (size_t j{}; j < tilemap::TILE; j++) {
+          switch (level[gui.currLevel].background[i][j]) {
+          case 0:
+            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
                            WHITE);
+            break;
+          case 1:
+            DrawTextureRec(envTex, envRec[1], (Vector2){j * 32.0f, i * 32.0f},
+                           WHITE);
+            break;
+          default:
+            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
+                           WHITE);
+            break;
+          }
+        }
+      }
 
       // NOTE : Player and NPC
       DrawTextureRec(playerAnim.tex[player.state], playerAnim.rec, player.pos,
                      WHITE);
 
       // NOTE : Foreground textures
-      for (size_t i{}; i < tilemap::TILE; i++)
-        for (size_t j{}; j < tilemap::TILE; j++)
-          if (level[gui.currLevel].foreground[i][j] == 1)
-            DrawTextureRec(envTex, envRec[1], (Vector2){i * 32.0f, j * 32.0f},
+      for (size_t i{}; i < tilemap::TILE; i++) {
+        for (size_t j{}; j < tilemap::TILE; j++) {
+          switch (level[gui.currLevel].foreground[i][j]) {
+          case 0:
+            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
                            WHITE);
+            break;
+          case 1:
+            DrawTextureRec(envTex, envRec[2], (Vector2){j * 32.0f, i * 32.0f},
+                           WHITE);
+            break;
+          default:
+            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
+                           WHITE);
+            break;
+          }
+        }
+      }
 
       // NOTE : Dynamic UI
 
@@ -88,7 +115,7 @@ int main(void) {
       ImGui::End();
 
       gui.settings(player.pos);
-      gui.tile_editor(level[gui.currLevel], envTex, envRec);
+      gui.tile_editor(&level[gui.currLevel], envTex, envRec);
       gui.log();
       rlImGuiEnd();
 
@@ -98,6 +125,7 @@ int main(void) {
     for (size_t i{}; i < 3; i++)
       UnloadTexture(playerAnim.tex[i]);
     UnloadTexture(envTex);
+    map.update(&map.map, gui.levels[gui.currLevel]);
   }
 
   CloseWindow();

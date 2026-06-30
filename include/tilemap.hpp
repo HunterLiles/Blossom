@@ -45,4 +45,17 @@ public:
     }
     return map;
   }
+
+  void update(MapData *map, std::string level) {
+    level = "../resources/levels/" + level + ".bin";
+    if (std::filesystem::exists(level)) {
+      std::ofstream file(level, std::ios::binary);
+      if (file.is_open()) {
+        file.write(reinterpret_cast<char *>(&map), sizeof(&map));
+        file.close();
+      } else {
+        std::cerr << "Error writing to level file";
+      }
+    }
+  }
 };

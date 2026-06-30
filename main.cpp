@@ -60,20 +60,8 @@ int main(void) {
       // NOTE : Background textures
       for (size_t i{}; i < tilemap::TILE; i++) {
         for (size_t j{}; j < tilemap::TILE; j++) {
-          switch (level[gui.currLevel].background[i][j]) {
-          case 0:
-            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
-                           WHITE);
-            break;
-          case 1:
-            DrawTextureRec(envTex, envRec[1], (Vector2){j * 32.0f, i * 32.0f},
-                           WHITE);
-            break;
-          default:
-            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
-                           WHITE);
-            break;
-          }
+          DrawTextureRec(envTex, envRec[level[gui.currLevel].background[i][j]],
+                         (Vector2){j * 32.0f, i * 32.0f}, WHITE);
         }
       }
 
@@ -84,20 +72,8 @@ int main(void) {
       // NOTE : Foreground textures
       for (size_t i{}; i < tilemap::TILE; i++) {
         for (size_t j{}; j < tilemap::TILE; j++) {
-          switch (level[gui.currLevel].foreground[i][j]) {
-          case 0:
-            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
-                           WHITE);
-            break;
-          case 1:
-            DrawTextureRec(envTex, envRec[2], (Vector2){j * 32.0f, i * 32.0f},
-                           WHITE);
-            break;
-          default:
-            DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
-                           WHITE);
-            break;
-          }
+          DrawTextureRec(envTex, envRec[level[gui.currLevel].foreground[i][j]],
+                         (Vector2){j * 32.0f, i * 32.0f}, WHITE);
         }
       }
 
@@ -125,7 +101,7 @@ int main(void) {
     for (size_t i{}; i < 3; i++)
       UnloadTexture(playerAnim.tex[i]);
     UnloadTexture(envTex);
-    map.update(&map.map, gui.levels[gui.currLevel]);
+    map.update(gui.levels[gui.currLevel], &level[gui.currLevel]);
   }
 
   CloseWindow();

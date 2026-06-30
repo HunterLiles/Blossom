@@ -10,6 +10,8 @@ class gui {
 private:
   std::vector<std::string> texID = {"Air {0}", "Grass {1}", "Tree {2}"};
   int currTex = 0;
+  std::vector<std::string> layer = {"background", "foreground"};
+  int currLayer = 0;
 
   RenderTexture2D tex =
       LoadRenderTexture(tilemap::TILE * 32.0f, tilemap::TILE * 32.0f);
@@ -52,6 +54,7 @@ public:
                    std::vector<Rectangle> envRec) {
     ImGui::Begin("Level Editor");
 
+    ImGui::SetNextItemWidth(100);
     if (ImGui::BeginCombo("TextureID", texID[currTex].c_str())) {
       ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign,
                           ImVec2(0.5f, 0.5f));
@@ -66,46 +69,63 @@ public:
       ImGui::PopStyleVar();
       ImGui::EndCombo();
     }
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(100);
+    if (ImGui::BeginCombo("Layer", layer[currLayer].c_str())) {
+      ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign,
+                          ImVec2(0.5f, 0.5f));
+
+      for (size_t i{}; i < layer.size(); i++) {
+        bool isSelected = (currLayer == i);
+        if (ImGui::Selectable(layer[i].c_str(), isSelected))
+          currLayer = i;
+        if (isSelected)
+          ImGui::SetItemDefaultFocus();
+      }
+      ImGui::PopStyleVar();
+      ImGui::EndCombo();
+    }
 
     Vector2 mouse = {GetMousePosition().x - ImGui::GetCursorScreenPos().x,
                      GetMousePosition().y - ImGui::GetCursorScreenPos().y};
-    Vector2 collisionPos;
+
+    // TODO : Make it only interactable through the visible part of the texture.
 
     BeginTextureMode(tex);
     ClearBackground(BLACK);
     for (size_t i{}; i < tilemap::TILE; i++) {
       for (size_t j{}; j < tilemap::TILE; j++) {
         Rectangle gridRec = {(j * 32.0f), (i * 32.0f), 32.0f, 32.0f};
+        DrawTextureRec(envTex, envRec[map->background[i][j]],
+                       (Vector2){j * 32.0f, i * 32.0f}, WHITE);
 
-        // ------------ Finding texture ID ------------ //
-        switch (map->background[i][j]) {
-        case 0:
-          DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
-                         WHITE);
-          break;
-        case 1:
-          DrawTextureRec(envTex, envRec[1], (Vector2){j * 32.0f, i * 32.0f},
-                         WHITE);
-          break;
-        default:
-          DrawTextureRec(envTex, envRec[0], (Vector2){j * 32.0f, i * 32.0f},
-                         WHITE);
-          break;
-        }
-        // --------------------------------------------- //
-
-        // ----------- Collision ------------- //
         if (CheckCollisionPointRec(mouse, gridRec))
           DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
 
         if (CheckCollisionPointRec(mouse, gridRec) &&
             IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-          collisionPos = {(float)j, (float)i};
-          map->background[(int)collisionPos.y][(int)collisionPos.x] = currTex;
+          if (layer[currLayer] == "background")
+            map->background[i][j] = currTex;
         }
-        // ------------------------------------ //
       }
     }
+
+    for (size_t i{}; i < tilemap::TILE; i++) {
+      for (size_t j{}; j < tilemap::TILE; j++) {
+        Rectangle gridRec = {(j * 32.0f), (i * 32.0f), 32.0f, 32.0f};
+        DrawTextureRec(envTex, envRec[map->foreground[i][j]],
+                       (Vector2){j * 32.0f, i * 32.0f}, WHITE);
+
+        if (CheckCollisionPointRec(mouse, gridRec))
+          DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
+        if (CheckCollisionPointRec(mouse, gridRec) &&
+            IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+          if (layer[currLayer] == "foreground")
+            map->foreground[i][j] = currTex;
+        }
+      }
+    }
+
     EndTextureMode();
 
     rlImGuiImageRenderTexture(&tex);

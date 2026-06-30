@@ -12,49 +12,39 @@ public:
 
   struct MapData {
     int background[TILE][TILE];
-    int foreground[TILE][TILE] = {1};
+    int foreground[TILE][TILE];
   };
-
-  MapData map;
+  MapData mapData;
 
   MapData init(std::string level) {
     level = "../resources/levels/" + level + ".bin";
-
-    for (size_t i{}; i < TILE; i++) {
-      for (size_t j{}; j < TILE; j++) {
-        map.background[i][j] = 1;
-        if (i % 10 == 0 && j % 10 == 0)
-          map.foreground[i][j] = 1;
-      }
-    }
-
     if (std::filesystem::exists(level)) {
       std::ifstream file(level, std::ios::binary);
       if (file.is_open()) {
-        file.read(reinterpret_cast<char *>(&map), sizeof(map));
+        file.read(reinterpret_cast<char *>(&mapData), sizeof(mapData));
         file.close();
       } else
         std::cerr << "Error reading level file";
     } else {
       std::ofstream file(level, std::ios::binary);
       if (file.is_open()) {
-        file.write(reinterpret_cast<char *>(&map), sizeof(map));
+        file.write(reinterpret_cast<char *>(&mapData), sizeof(mapData));
         file.close();
       } else
         std::cerr << "Error writing to level file";
     }
-    return map;
+    return mapData;
   }
 
-  void update(MapData *map, std::string level) {
+  void update(std::string level, MapData *map) {
     level = "../resources/levels/" + level + ".bin";
     if (std::filesystem::exists(level)) {
       std::ofstream file(level, std::ios::binary);
       if (file.is_open()) {
-        file.write(reinterpret_cast<char *>(&map), sizeof(&map));
+        file.write(reinterpret_cast<char *>(map), sizeof(tilemap::MapData));
         file.close();
       } else {
-        std::cerr << "Error writing to level file";
+        std::cerr << "Error writing to level file " << level;
       }
     }
   }

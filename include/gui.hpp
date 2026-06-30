@@ -14,7 +14,7 @@ private:
   int currLayer = 0;
 
   RenderTexture2D tex =
-      LoadRenderTexture(tilemap::TILE * 32.0f, tilemap::TILE * 32.0f);
+      LoadRenderTexture(tilemap::TILE * 32, tilemap::TILE * 32);
 
 public:
   gui(bool DarkMode) {
@@ -69,7 +69,7 @@ public:
       ImGui::PopStyleVar();
       ImGui::EndCombo();
     }
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 10.0f);
     ImGui::SetNextItemWidth(100);
     if (ImGui::BeginCombo("Layer", layer[currLayer].c_str())) {
       ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign,
@@ -85,13 +85,21 @@ public:
       ImGui::PopStyleVar();
       ImGui::EndCombo();
     }
+    ImGui::Dummy(ImVec2(0, 50));
+    rlImGuiImageRenderTexture(&tex);
 
-    Vector2 mouse = {GetMousePosition().x - ImGui::GetCursorScreenPos().x,
-                     GetMousePosition().y - ImGui::GetCursorScreenPos().y};
-
-    // TODO : Make it only interactable through the visible part of the texture.
+    float scaleX = (float)tex.texture.width / ImGui::GetItemRectSize().x;
+    float scaleY = (float)tex.texture.height / ImGui::GetItemRectSize().y;
+    Vector2 mousePos = {
+        (ImGui::GetMousePos().x - ImGui::GetItemRectMin().x) * scaleX,
+        (ImGui::GetMousePos().y - ImGui::GetItemRectMin().y) * scaleY};
 
     BeginTextureMode(tex);
+    // TODO : Add a camera 2D so that I can zoom in and move around with my
+    // mouse?
+    //
+    // NOTE : Make the Camera2D. grab the mouse position which I just did. Move
+    // the camera according to the vector of movement.
     ClearBackground(BLACK);
     for (size_t i{}; i < tilemap::TILE; i++) {
       for (size_t j{}; j < tilemap::TILE; j++) {
@@ -99,13 +107,14 @@ public:
         DrawTextureRec(envTex, envRec[map->background[i][j]],
                        (Vector2){j * 32.0f, i * 32.0f}, WHITE);
 
-        if (CheckCollisionPointRec(mouse, gridRec))
+        if (CheckCollisionPointRec(mousePos, gridRec) && ImGui::IsItemHovered())
           DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
 
-        if (CheckCollisionPointRec(mouse, gridRec) &&
-            IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+        if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+          int hoverX = floor((int)mousePos.x / 32.0f);
+          int hoverY = floor((int)mousePos.y / 32.0f);
           if (layer[currLayer] == "background")
-            map->background[i][j] = currTex;
+            map->background[hoverY][hoverX] = currTex;
         }
       }
     }
@@ -116,19 +125,19 @@ public:
         DrawTextureRec(envTex, envRec[map->foreground[i][j]],
                        (Vector2){j * 32.0f, i * 32.0f}, WHITE);
 
-        if (CheckCollisionPointRec(mouse, gridRec))
+        if (CheckCollisionPointRec(mousePos, gridRec) && ImGui::IsItemHovered())
           DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
-        if (CheckCollisionPointRec(mouse, gridRec) &&
-            IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+
+        if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+          int hoverX = floor((int)mousePos.x / 32.0f);
+          int hoverY = floor((int)mousePos.y / 32.0f);
           if (layer[currLayer] == "foreground")
-            map->foreground[i][j] = currTex;
+            map->foreground[hoverY][hoverX] = currTex;
         }
       }
     }
-
     EndTextureMode();
 
-    rlImGuiImageRenderTexture(&tex);
     ImGui::End();
   }
 

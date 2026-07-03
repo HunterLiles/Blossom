@@ -52,10 +52,9 @@ int main(void) {
       playerAnim.anim_update(player.dir, player.state);
       player.contr_update(&playerAnim.rec);
 
-      BeginDrawing();
       BeginTextureMode(gameTex);
-      BeginMode2D(player.cam);
       ClearBackground(BLACK);
+      BeginMode2D(player.cam);
 
       // NOTE : Background textures
       for (size_t i{}; i < tilemap::TILE; i++) {
@@ -79,9 +78,10 @@ int main(void) {
 
       // NOTE : Dynamic UI
 
-      EndTextureMode();
       EndMode2D();
+      EndTextureMode();
 
+      BeginDrawing();
       rlImGuiBegin();
       ImGui::DockSpaceOverViewport(0, NULL,
                                    ImGuiDockNodeFlags_PassthruCentralNode);
@@ -101,7 +101,8 @@ int main(void) {
     for (size_t i{}; i < 3; i++)
       UnloadTexture(playerAnim.tex[i]);
     UnloadTexture(envTex);
-    map.update(gui.levels[gui.currLevel], &level[gui.currLevel]);
+    for (size_t i{}; i < gui.levels.size(); i++)
+      map.update(gui.levels[i], &level[i]);
   }
 
   CloseWindow();

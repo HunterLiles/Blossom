@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "raylib.h"
+#include "raymath.h"
 #include "rlImGui.h"
 #include "tilemap.hpp"
 
@@ -15,6 +16,12 @@ private:
 
   RenderTexture2D tex =
       LoadRenderTexture(tilemap::TILE * 32, tilemap::TILE * 32);
+  Camera2D cam = {
+      .offset = {0.0f, 0.0f},
+      .target = {0.0f, 0.0f},
+      .rotation = 0.0f,
+      .zoom = 1.0f,
+  };
 
 public:
   gui(bool DarkMode) {
@@ -52,7 +59,9 @@ public:
 
   void tile_editor(tilemap::MapData *map, Texture2D envTex,
                    std::vector<Rectangle> envRec) {
-    ImGui::Begin("Level Editor");
+    ImGui::Begin("Level Editor", nullptr,
+                 ImGuiWindowFlags_NoScrollbar |
+                     ImGuiWindowFlags_NoScrollWithMouse);
 
     ImGui::SetNextItemWidth(100);
     if (ImGui::BeginCombo("TextureID", texID[currTex].c_str())) {
@@ -88,18 +97,32 @@ public:
     ImGui::Dummy(ImVec2(0, 50));
     rlImGuiImageRenderTexture(&tex);
 
-    float scaleX = (float)tex.texture.width / ImGui::GetItemRectSize().x;
-    float scaleY = (float)tex.texture.height / ImGui::GetItemRectSize().y;
-    Vector2 mousePos = {
-        (ImGui::GetMousePos().x - ImGui::GetItemRectMin().x) * scaleX,
-        (ImGui::GetMousePos().y - ImGui::GetItemRectMin().y) * scaleY};
+    cam.zoom = expf(logf(cam.zoom) + ((float)GetMouseWheelMove() * 0.1f));
+    if (cam.zoom > 10.0f)
+      cam.zoom = 10.0f;
+    else if (cam.zoom < 0.01f)
+      cam.zoom = 0.01;
+
+    if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+      cam.target =
+          GetScreenToWorld2D(Vector2Subtract(cam.offset, GetMouseDelta()), cam);
+
+    float scaleX =
+        (((float)tex.texture.width / ImGui::GetItemRectSize().x)) / cam.zoom;
+    float scaleY =
+        ((float)tex.texture.height / ImGui::GetItemRectSize().y) / cam.zoom;
+    Vector2 mousePos = {(ImGui::GetMousePos().x - (ImGui::GetItemRectMin().x -
+                                                   (cam.target.x / scaleX))) *
+                            scaleX,
+                        (ImGui::GetMousePos().y - (ImGui::GetItemRectMin().y -
+                                                   (cam.target.y / scaleY))) *
+                            scaleY};
+
+    cam.target.x = Clamp(cam.target.x, 0.0f, tex.texture.width);
+    cam.target.y = Clamp(cam.target.y, 0.0f, tex.texture.height);
 
     BeginTextureMode(tex);
-    // TODO : Add a camera 2D so that I can zoom in and move around with my
-    // mouse?
-    //
-    // NOTE : Make the Camera2D. grab the mouse position which I just did. Move
-    // the camera according to the vector of movement.
+    BeginMode2D(cam);
     ClearBackground(BLACK);
     for (size_t i{}; i < tilemap::TILE; i++) {
       for (size_t j{}; j < tilemap::TILE; j++) {
@@ -136,6 +159,7 @@ public:
         }
       }
     }
+    EndMode2D();
     EndTextureMode();
 
     ImGui::End();

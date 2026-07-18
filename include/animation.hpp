@@ -1,21 +1,20 @@
-#include "raylib.h"
-
 class animation {
 private:
+  int counter = 0.0f;
+  int frame = 0.0f;
+
 public:
   animation() = default;
   ~animation() = default;
 
   Texture2D tex[5];
   Rectangle rec;
-  int counter;
-  int frame;
   int frameSpeed;
 
-  void anim_update(int dir, int state) {
+  void anim_update(int dir, int state, float deltaTime) {
     counter++;
 
-    if (counter >= ((1 / GetFrameTime()) / frameSpeed)) {
+    if (counter >= ((1 / deltaTime) / frameSpeed)) {
       counter = 0;
       frame++;
 

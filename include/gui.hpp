@@ -1,8 +1,8 @@
 #include "imgui.h"
-#include "raylib.h"
-#include "raymath.h"
-#include "rlImGui.h"
+#include "math.hpp"
 #include "tilemap.hpp"
+#include <GL/gl.h>
+#include <GLFW/glfw3.h>
 
 #include <string>
 #include <vector>
@@ -14,28 +14,27 @@ private:
   std::vector<std::string> layer = {"background", "foreground"};
   int currLayer = 0;
 
-  RenderTexture2D tex =
-      LoadRenderTexture(tilemap::TILE * 32, tilemap::TILE * 32);
-  Camera2D cam = {
-      .offset = {0.0f, 0.0f},
-      .target = {0.0f, 0.0f},
-      .rotation = 0.0f,
-      .zoom = 1.0f,
-  };
+  // RenderTexture2D tex =
+  //     LoadRenderTexture(tilemap::TILE * 32, tilemap::TILE * 32);
+  // camera cam = {
+  //     .offset = {0.0f, 0.0f},
+  //     .target = {0.0f, 0.0f},
+  //     .rotation = 0.0f,
+  //     .zoom = 1.0f,
+  // };
 
 public:
   gui(bool DarkMode) {
-    rlImGuiSetup(DarkMode);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
   };
-  ~gui() { rlImGuiShutdown(); };
+  ~gui() = default;
 
   std::vector<std::string> levels = {"one", "two", "three"};
   int currLevel = 0;
 
-  void settings(Vector2 pos) {
+  void settings(math::vec2 pos, float deltaTime) {
     ImGui::Begin("Settings");
-    ImGui::Text("FPS : %.2d", GetFPS());
+    ImGui::Text("FPS : %.2f", 1.0f / deltaTime);
     ImGui::Text("X : %.2f | Y : %.2f", pos.x, pos.y);
 
     if (ImGui::BeginCombo("Level", levels[currLevel].c_str())) {
@@ -57,8 +56,8 @@ public:
     ImGui::End();
   }
 
-  void tile_editor(tilemap::MapData *map, Texture2D envTex,
-                   std::vector<Rectangle> envRec) {
+  void tile_editor(GLFWwindow *window, tilemap::MapData *map, float zoom,
+                   math::vec2 target) {
     ImGui::Begin("Level Editor", nullptr,
                  ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoScrollWithMouse);
@@ -95,72 +94,75 @@ public:
       ImGui::EndCombo();
     }
     ImGui::Dummy(ImVec2(0, 50));
-    rlImGuiImageRenderTexture(&tex);
+    // rlImGuiImageRenderTexture(&tex);
 
-    cam.zoom = expf(logf(cam.zoom) + ((float)GetMouseWheelMove() * 0.1f));
-    if (cam.zoom > 10.0f)
-      cam.zoom = 10.0f;
-    else if (cam.zoom < 0.01f)
-      cam.zoom = 0.01;
+    zoom = expf(
+        logf(zoom) +
+        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_4) == GLFW_PRESS) * 0.1f);
+    if (zoom > 10.0f)
+      zoom = 10.0f;
+    else if (zoom < 0.01f)
+      zoom = 0.01;
 
-    if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-      cam.target =
-          GetScreenToWorld2D(Vector2Subtract(cam.offset, GetMouseDelta()), cam);
+    // if (ImGui::IsItemHovered() &&
+    //     glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+    //   target =
+    //       GetScreenToWorld2D(Vector2Subtract(cam.offset, GetMouseDelta()),
+    //       cam);
 
-    float scaleX =
-        (((float)tex.texture.width / ImGui::GetItemRectSize().x)) / cam.zoom;
-    float scaleY =
-        ((float)tex.texture.height / ImGui::GetItemRectSize().y) / cam.zoom;
-    Vector2 mousePos = {(ImGui::GetMousePos().x - (ImGui::GetItemRectMin().x -
-                                                   (cam.target.x / scaleX))) *
-                            scaleX,
-                        (ImGui::GetMousePos().y - (ImGui::GetItemRectMin().y -
-                                                   (cam.target.y / scaleY))) *
-                            scaleY};
+    // float scaleX = (((float)texture.width / ImGui::GetItemRectSize().x)) /
+    // zoom; float scaleY = ((float)texture.height / ImGui::GetItemRectSize().y)
+    // / zoom; math::vec2 mousePos = {(ImGui::GetMousePos().x -
+    //                         (ImGui::GetItemRectMin().x - (target.x /
+    //                         scaleX))) *
+    //                            scaleX,
+    //                        (ImGui::GetMousePos().y -
+    //                         (ImGui::GetItemRectMin().y - (target.y /
+    //                         scaleY))) *
+    //                            scaleY};
+    //
+    // target.x = Clamp(target.x, 0.0f, texture.width);
+    // target.y = Clamp(target.y, 0.0f, texture.height);
 
-    cam.target.x = Clamp(cam.target.x, 0.0f, tex.texture.width);
-    cam.target.y = Clamp(cam.target.y, 0.0f, tex.texture.height);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    // for (size_t i{}; i < tilemap::TILE; i++) {
+    //   for (size_t j{}; j < tilemap::TILE; j++) {
+    //     Rectangle gridRec = {(j * 32.0f), (i * 32.0f), 32.0f, 32.0f};
+    //     DrawTextureRec(envTex, envRec[map->background[i][j]],
+    //                    (Vector2){j * 32.0f, i * 32.0f}, WHITE);
+    //
+    //     if (CheckCollisionPointRec(mousePos, gridRec) &&
+    //     ImGui::IsItemHovered())
+    //       DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
+    //
+    //     if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+    //       int hoverX = floor((int)mousePos.x / 32.0f);
+    //       int hoverY = floor((int)mousePos.y / 32.0f);
+    //       if (layer[currLayer] == "background")
+    //         map->background[hoverY][hoverX] = currTex;
+    //     }
+    //   }
+    // }
 
-    BeginTextureMode(tex);
-    BeginMode2D(cam);
-    ClearBackground(BLACK);
-    for (size_t i{}; i < tilemap::TILE; i++) {
-      for (size_t j{}; j < tilemap::TILE; j++) {
-        Rectangle gridRec = {(j * 32.0f), (i * 32.0f), 32.0f, 32.0f};
-        DrawTextureRec(envTex, envRec[map->background[i][j]],
-                       (Vector2){j * 32.0f, i * 32.0f}, WHITE);
-
-        if (CheckCollisionPointRec(mousePos, gridRec) && ImGui::IsItemHovered())
-          DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
-
-        if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-          int hoverX = floor((int)mousePos.x / 32.0f);
-          int hoverY = floor((int)mousePos.y / 32.0f);
-          if (layer[currLayer] == "background")
-            map->background[hoverY][hoverX] = currTex;
-        }
-      }
-    }
-
-    for (size_t i{}; i < tilemap::TILE; i++) {
-      for (size_t j{}; j < tilemap::TILE; j++) {
-        Rectangle gridRec = {(j * 32.0f), (i * 32.0f), 32.0f, 32.0f};
-        DrawTextureRec(envTex, envRec[map->foreground[i][j]],
-                       (Vector2){j * 32.0f, i * 32.0f}, WHITE);
-
-        if (CheckCollisionPointRec(mousePos, gridRec) && ImGui::IsItemHovered())
-          DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
-
-        if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-          int hoverX = floor((int)mousePos.x / 32.0f);
-          int hoverY = floor((int)mousePos.y / 32.0f);
-          if (layer[currLayer] == "foreground")
-            map->foreground[hoverY][hoverX] = currTex;
-        }
-      }
-    }
-    EndMode2D();
-    EndTextureMode();
+    // for (size_t i{}; i < tilemap::TILE; i++) {
+    //   for (size_t j{}; j < tilemap::TILE; j++) {
+    //     Rectangle gridRec = {(j * 32.0f), (i * 32.0f), 32.0f, 32.0f};
+    //     DrawTextureRec(envTex, envRec[map->foreground[i][j]],
+    //                    (math::vec2){j * 32.0f, i * 32.0f}, WHITE);
+    //
+    //     if (CheckCollisionPointRec(mousePos, gridRec) &&
+    //     ImGui::IsItemHovered())
+    //       DrawRectangleLinesEx(gridRec, 1.5f, WHITE);
+    //
+    //     if (ImGui::IsItemHovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+    //       int hoverX = floor((int)mousePos.x / 32.0f);
+    //       int hoverY = floor((int)mousePos.y / 32.0f);
+    //       if (layer[currLayer] == "foreground")
+    //         map->foreground[hoverY][hoverX] = currTex;
+    //     }
+    //   }
+    // }
 
     ImGui::End();
   }

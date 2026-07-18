@@ -9,9 +9,9 @@ The 2D engine has a fully working animation system, player controller, level edi
 ![Preview](https://github.com/HunterLiles/Blossom/blob/main/resources/preview2.gif)
 
 - TODO :
-  - Allow the level editor to be traversed with clicking and dragging the mouse around and zooming in and out with the mouse wheel.
   - Figure out some optimizations for the level editor so that it isn't eating performance.
-  - Add collisions to trees.
+  - Add collisions.
+  - Add particle system.
 
 ## Build Instructions
 ### Linux

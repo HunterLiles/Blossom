@@ -33,7 +33,6 @@ int main(void) {
     controller player = {{GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f},
                          150.0f,
                          1.5f,
-                         500.0f,
                          IDLE,
                          S,
                          {player.pos, player.pos, 0.0f, 1.0f}};

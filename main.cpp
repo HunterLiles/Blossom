@@ -1,11 +1,3 @@
-#include "imgui.h"
-#include "raylib.h"
-#include "rlImGui.h"
-
-#include "animation.hpp"
-#include "controller.hpp"
-#include "gui.hpp"
-
 int main(void) {
   SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
   InitWindow(1280, 720, "Blossom");

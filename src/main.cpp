@@ -1,8 +1,5 @@
-#include "Controller.hpp"
 #include <Engine.hpp> // IWYU pragma: keep
-#include <GLFW/glfw3.h>
-#include <Gui.hpp>
-// #include <Tilemap.hpp>
+#include <Tilemap.hpp>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
@@ -21,45 +18,33 @@ int main(void) {
   std::vector<unsigned int> indices = {0, 1, 3, 1, 2, 3};
   Mesh triangle;
   triangle.loadBuffers(vertices, indices);
+  triangle.loadTexture("../resources/player-anim/idle.png");
 
-  unsigned int texture;
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  int width, height, nrChannels;
-  unsigned char *data =
-      stbi_load("../resources/container.jpg", &width, &height, &nrChannels, 0);
-  if (data) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-  } else
-    std::cerr << "Failed to load texture";
-  stbi_image_free(data);
+  // NOTE : Tilemap stuff
 
-  // // NOTE : Tilemap stuff
-  // std::vector<tilemap::MapData> level;
-  // for (size_t i{}; i < gui.levels.size(); i++) {
-  //   auto levelData = map.init(gui.levels[i]);
-  //   level.push_back(levelData);
-  // }
-  //
-  // // NOTE : Enviornment Init
-  // Texture2D envTex = LoadTexture("../resources/trees.png");
-  // std::vector<Rectangle> envRec = {
-  //     {}, {352, 576, 32, 32}, {224, 306, 176, 176}};
+  // NOTE : Enviornment Init
 
   // NOTE : Player Init
   controller cont(1.0f, 1.5f, 3.0f);
 
   camera camera;
   Math::mat4 view = {.mat{}}, proj = {.mat{}};
-  Gui gui(window);
 
   // NOTE : NPC Init
+
+  Gui gui;
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplOpenGL3_Init("#version 460");
 
   float lastTime{}, deltaTime{};
 
   glUseProgram(shader.shaderProgram);
+  glUniform1i(glGetUniformLocation(shader.shaderProgram, "ourTexture"), 0);
+
   while (!glfwWindowShouldClose(window)) {
     // NOTE : Pre-rendering things
     float currTime = glfwGetTime();
@@ -78,38 +63,27 @@ int main(void) {
                        reinterpret_cast<const GLfloat *>(view.mat.data()));
     glUniformMatrix4fv(projLoc, 1, GL_TRUE,
                        reinterpret_cast<const GLfloat *>(proj.mat.data()));
-    glUniform1i(glGetUniformLocation(shader.shaderProgram, "ourTexture"), 0);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, triangle.texture);
+    glUseProgram(shader.shaderProgram);
     glBindVertexArray(triangle.VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+
+    // NOTE : Background textures
+
+    // NOTE : Player and NPC
+
+    // NOTE : Foreground textures
+
+    // NOTE : Dynamic UI
 
     float lastTime = glfwGetTime();
     float frameTime = lastTime - currTime;
 
-    // NOTE : Background textures
-    // for (size_t i{}; i < tilemap::TILE; i++) {
-    //   for (size_t j{}; j < tilemap::TILE; j++) {
-    //     DrawTextureRec(envTex, envRec[level[gui.currLevel].background[i][j]],
-    //                    (Vector2){j * 32.0f, i * 32.0f}, WHITE);
-    //   }
-    // }
-
-    // NOTE : Player and NPC
-
-    // // NOTE : Foreground textures
-    // for (size_t i{}; i < tilemap::TILE; i++) {
-    //   for (size_t j{}; j < tilemap::TILE; j++) {
-    //     DrawTextureRec(envTex, envRec[level[gui.currLevel].foreground[i][j]],
-    //                    (Vector2){j * 32.0f, i * 32.0f}, WHITE);
-    //   }
-    // }
-
-    // NOTE : Dynamic UI
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();

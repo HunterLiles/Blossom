@@ -1,17 +1,13 @@
 #pragma once
 
-#include <glad/gl.h>
-
-#include <GLFW/glfw3.h>
+#include <Core.hpp>
 #include <Math.hpp>
-#include <Window.hpp>
 
 typedef enum { IDLE = 0, WALK, RUN, NUM_ANIM } AnimState;
 typedef enum { NW = 0, W, SW, S, SE, E, NE, N, NUM_DIR } Direction;
 
 class controller {
 private:
-  Window input;
   AnimState state;
   Direction dir;
   float speed{}, sprint{}, zoom{};
@@ -25,23 +21,24 @@ public:
                     float deltaTime) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
       glfwSetWindowShouldClose(window, true);
+
     Math::vec3 move{};
 
     float currSpeed = speed * deltaTime;
-    currSpeed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-                    ? currSpeed * sprint
-                    : currSpeed;
-    move.x = (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-                 ? move.x - currSpeed
-             : (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-                 ? move.x + currSpeed
-                 : move.x;
-    move.y =
-        (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)     ? move.y + currSpeed
-        : (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) ? move.y - currSpeed
-                                                            : move.y;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+      currSpeed *= sprint;
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+      move.x -= currSpeed;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+      move.x += currSpeed;
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+      move.y += currSpeed;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+      move.y -= currSpeed;
+
     pos = pos + move;
-    target = target + move;
+    target = pos;
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS)
       zoom += 1.0f * deltaTime;
@@ -56,15 +53,22 @@ public:
     if (move.x != 0 || move.y != 0) {
       state =
           glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? RUN : WALK;
-      dir = (move.x > 0)                 ? E
-            : (move.x < 0)               ? W
-            : (move.y > 0)               ? S
-            : (move.y < 0)               ? N
-            : (move.x > 0 && move.y > 0) ? SE
-            : (move.x < 0 && move.y > 0) ? SW
-            : (move.x > 0 && move.y < 0) ? NE
-            : (move.x < 0 && move.y < 0) ? NW
-                                         : dir;
+      if (move.x > 0)
+        dir = E;
+      if (move.x < 0)
+        dir = W;
+      if (move.y > 0)
+        dir = N;
+      if (move.y < 0)
+        dir = S;
+      if (move.x > 0 && move.y > 0)
+        dir = SE;
+      if (move.x < 0 && move.y > 0)
+        dir = SW;
+      if (move.x > 0 && move.y < 0)
+        dir = NE;
+      if (move.x < 0 && move.y < 0)
+        dir = NW;
     }
   }
 };

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <vector> // IWYU pragma: keep
 
 namespace Math {
 struct vec2 {

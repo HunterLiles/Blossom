@@ -6,12 +6,13 @@ class camera {
 private:
   float f = 10.0f, n = -1.0f;
   float r = 0.5f, t = 0.5f;
+  Math::vec3 up{0.0f, 1.0f, 0.0f};
 
 public:
   camera() = default;
   ~camera() = default;
 
-  Math::vec3 center{}, eye{0.0f, 0.0f, 1.0f}, up{0.0f, 1.0f, 0.0f};
+  Math::vec3 center{}, eye{0.0f, 0.0f, 3.0f};
 
   Math::mat4 viewMat() {
     Math::vec3 forward = (center - eye).normalize();

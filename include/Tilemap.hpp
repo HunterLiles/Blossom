@@ -4,18 +4,20 @@
 #include <filesystem>
 #include <iostream>
 
+#include <Math.hpp>
+
 class Tilemap {
 private:
+  const static int TILE = 128;
+  struct MapData {
+    std::array<std::array<int, TILE>, TILE> background;
+    std::array<std::array<int, TILE>, TILE> foreground;
+  };
+
 public:
   Tilemap() = default;
   ~Tilemap() = default;
 
-  const static int TILE = 128;
-
-  struct MapData {
-    int background[TILE][TILE];
-    int foreground[TILE][TILE];
-  };
   MapData mapData;
 
   MapData init(std::string level) {

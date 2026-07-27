@@ -1,7 +1,7 @@
 #pragma once
 
+#include <Core.hpp>
 #include <fstream>
-#include <glad/gl.h>
 #include <iostream>
 #include <sstream>
 #include <string>

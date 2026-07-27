@@ -1,12 +1,13 @@
 #pragma once
-#include <GLFW/glfw3.h>
+
+#include <Core.hpp>
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 #include <Math.hpp>
 #include <string>
-#include <vector>
 
 class Gui {
 private:
@@ -16,14 +17,7 @@ private:
   int currLayer{};
 
 public:
-  Gui(GLFWwindow *window) {
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 460");
-  };
+  Gui() = default;
   ~Gui() = default;
 
   std::vector<std::string> levels = {"one", "two", "three"};
@@ -54,7 +48,7 @@ public:
     ImGui::End();
   }
 
-  // void tile_editor(tilemap::MapData *map) {
+  // void tile_editor() {
   //   ImGui::Begin("Level Editor", nullptr,
   //                ImGuiWindowFlags_NoScrollbar |
   //                    ImGuiWindowFlags_NoScrollWithMouse);

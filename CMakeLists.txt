@@ -28,6 +28,9 @@ add_executable(${PROJECT_NAME} src/main.cpp src/gl.c ${IMGUI})
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw)
 target_include_directories(
   ${PROJECT_NAME}
-  PRIVATE ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends
-          ${CMAKE_CURRENT_SOURCE_DIR}/include
-          ${CMAKE_CURRENT_SOURCE_DIR}/external)
+  PRIVATE ${imgui_SOURCE_DIR}
+          ${imgui_SOURCE_DIR}/backends
+          ${CMAKE_CURRENT_SOURCE_DIR}/backend
+          ${CMAKE_CURRENT_SOURCE_DIR}/external
+          ${CMAKE_CURRENT_SOURCE_DIR}/resources
+          ${CMAKE_CURRENT_SOURCE_DIR}/backend/shaders)

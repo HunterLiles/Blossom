@@ -16,12 +16,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(imgui)
 
 set(IMGUI
-    ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp)
 
 add_executable(${PROJECT_NAME} src/main.cpp src/gl.c ${IMGUI})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw)
 target_include_directories(
-  ${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR}
+  ${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends
                           ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -1,13 +1,4 @@
-#include <glad/gl.h>
-
-#include <GLFW/glfw3.h>
-
-#include "camera.hpp"
-// #include "animation.hpp"
-#include "controller.hpp"
-#include "gui.hpp"
-#include "math.hpp"
-// #include "imgui.h"
+#include <Engine.hpp>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 std::string ReadFile(std::string file);
@@ -51,114 +42,85 @@ int main(void) {
   glDeleteShader(vertShader);
   glDeleteShader(fragShader);
 
-  float vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
+  float vertices[] = {
+      0.5f,  0.5f,  0.0f, // top right
+      0.5f,  -0.5f, 0.0f, // bottom right
+      -0.5f, -0.5f, 0.0f, // bottom left
+      -0.5f, 0.5f,  0.0f  // top left
+  };
+  unsigned int indices[] = {
+      0, 1, 3, // first triangle
+      1, 2, 3  // second triangle
+  };
 
-  unsigned int VBO, VAO;
+  unsigned int VBO{}, VAO{}, EBO{};
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
+  glGenBuffers(1, &EBO);
   glBindVertexArray(VAO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+               GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+  {
+    Gui gui(window);
+    camera cam;
 
-  // gui gui(true);
-  // tilemap map;
-  camera cam;
-  cam.pos = {0.0f, 0.0f};
-  cam.target = {0.0f, 0.0f};
-  cam.zoom = 1.0f;
+    float deltaTime{}, lastTime{};
+    bool is3D{false};
 
-  controller cont;
-  cont.speed = 10.0f;
-  cont.sprint = 1.5f;
+    while (!glfwWindowShouldClose(window)) {
+      // NOTE : Pre-rendering things
+      float currTime = glfwGetTime();
+      deltaTime = currTime - lastTime;
+      lastTime = currTime;
 
-  float deltaTime = 0.0f;
-  float lastFrame = 0.0f;
+      glClearColor(0.4f, 0.4f, 0.6f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
 
-  math::mat4 view = {.mat = {0.0f}};
-  math::mat4 proj = {.mat = {0.0f}};
+      glUseProgram(shaderProgram);
 
-  // NOTE : Tilemap stuff
-  // std::vector<tilemap::MapData> level;
-  // for (size_t i{}; i < gui.levels.size(); i++) {
-  //   auto levelData = map.init(gui.levels[i]);
-  //   level.push_back(levelData);
-  // }
+      if (is3D) {
+        cam.Controller(window, deltaTime); // This needs to change
+        cam.lookAt();
+        cam.perspective();
+      } else {
+        cam.Controller(window, deltaTime);
+        cam.lookAt();
+        cam.orthographic();
+      }
 
-  // NOTE : Enviornment Init
-  // Texture2D envTex = LoadTexture("../resources/trees.png");
-  // std::vector<Rectangle> envRec = {
-  //     {}, {352, 576, 32, 32}, {224, 306, 176, 176}};
+      glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1,
+                         GL_TRUE, &cam.view.mat[0].x);
+      glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "proj"), 1,
+                         GL_TRUE, &cam.proj.mat[0].x);
 
-  // NOTE : Player Init
+      glBindVertexArray(VAO);
+      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+      glBindVertexArray(0);
 
-  // NOTE : NPC Init
+      float lastFrame = glfwGetTime();
+      float frameTime = lastFrame - currTime;
 
-  while (!glfwWindowShouldClose(window)) {
-    // NOTE : Pre-rendering things
-    float currFrame = glfwGetTime();
-    deltaTime = currFrame - lastFrame;
-    lastFrame = currFrame;
+      ImGui_ImplOpenGL3_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+      gui.settings(cam.eye, frameTime, &is3D);
+      gui.log();
 
-    glUseProgram(shaderProgram);
-
-    unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
-    unsigned int projLoc = glGetUniformLocation(shaderProgram, "proj");
-
-    cam.looAt(view);
-    cam.projection(window, proj);
-    cont.contr_update(window, cam.pos, cam.zoom, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-      glfwSetWindowShouldClose(window, true);
-
-    glUniformMatrix4fv(viewLoc, 1, GL_TRUE, &view.mat[0][0]);
-    glUniformMatrix4fv(projLoc, 1, GL_TRUE, &proj.mat[0][0]);
-
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    // NOTE : Background textures
-    // for (size_t i{}; i < tilemap::TILE; i++) {
-    //   for (size_t j{}; j < tilemap::TILE; j++) {
-    //     DrawTextureRec(envTex, envRec[level[gui.currLevel].background[i][j]],
-    //                    (math::vec2){j * 32.0f, i * 32.0f}, WHITE);
-    //   }
-    // }
-
-    // NOTE : Player and NPC
-    // DrawTextureRec(playerAnim.tex[player.state], playerAnim.rec, player.pos,
-    //                WHITE);
-
-    // NOTE : Foreground textures
-    // for (size_t i{}; i < tilemap::TILE; i++) {
-    //   for (size_t j{}; j < tilemap::TILE; j++) {
-    //     DrawTextureRec(envTex, envRec[level[gui.currLevel].foreground[i][j]],
-    //                    (math::vec2){j * 32.0f, i * 32.0f}, WHITE);
-    //   }
-    // }
-
-    // NOTE : Dynamic UI
-
-    // ImGui::DockSpaceOverViewport(0, NULL,
-    //                              ImGuiDockNodeFlags_PassthruCentralNode);
-
-    // ImGui::Begin("Game Window");
-    // rlImGuiImageRenderTextureFit(&gameTex, true);
-    // ImGui::End();
-
-    // gui.settings(player.pos, deltaTime);
-    // gui.tile_editor(&level[gui.currLevel], envTex, envRec);
-    // gui.log();
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+      ImGui::Render();
+      ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+      glfwSwapBuffers(window);
+      glfwPollEvents();
+    }
   }
+  glDeleteProgram(shaderProgram);
   glfwTerminate();
   return 0;
 }

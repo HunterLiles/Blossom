@@ -2,8 +2,6 @@
 
 #include "Engine.hpp"
 
-#include <imgui.h>
-
 namespace {
 bool keyDown(const Engine& engine, int key) { return glfwGetKey(engine.window, key) == GLFW_PRESS; }
 }
@@ -19,8 +17,9 @@ void setCursorCapture(Engine& engine, bool captured) {
 }
 
 void processInput(Engine& engine, float deltaTime) {
+  const bool neovimOwnsKeyboard = engine.neovimWindowOpen && engine.neovimKeyboardFocused;
   const bool escapeDown = keyDown(engine, GLFW_KEY_ESCAPE);
-  if (escapeDown && !engine.escapeWasDown) {
+  if (!neovimOwnsKeyboard && escapeDown && !engine.escapeWasDown) {
     if (engine.exitConfirmationOpen) {
       engine.exitConfirmationOpen = false;
       if (engine.resumeInputAfterExitConfirmation) setCursorCapture(engine, true);
@@ -33,17 +32,17 @@ void processInput(Engine& engine, float deltaTime) {
   }
   engine.escapeWasDown = escapeDown;
   const bool enterDown = keyDown(engine, GLFW_KEY_ENTER) || keyDown(engine, GLFW_KEY_KP_ENTER);
-  if (engine.exitConfirmationOpen && enterDown && !engine.enterWasDown)
+  if (!neovimOwnsKeyboard && engine.exitConfirmationOpen && enterDown && !engine.enterWasDown)
     glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
   engine.enterWasDown = enterDown;
-  if (engine.exitConfirmationOpen) return;
+  if (engine.exitConfirmationOpen && !neovimOwnsKeyboard) return;
   const bool tabDown = keyDown(engine, GLFW_KEY_TAB);
-  if (tabDown && !engine.tabWasDown) setCursorCapture(engine, !engine.cursorCaptured);
+  if (!neovimOwnsKeyboard && tabDown && !engine.tabWasDown) setCursorCapture(engine, !engine.cursorCaptured);
   engine.tabWasDown = tabDown;
   const bool shaderReloadDown = keyDown(engine, GLFW_KEY_F5);
-  if (shaderReloadDown && !engine.shaderReloadWasDown) engine.shaderReloadRequested = true;
+  if (!neovimOwnsKeyboard && shaderReloadDown && !engine.shaderReloadWasDown) engine.shaderReloadRequested = true;
   engine.shaderReloadWasDown = shaderReloadDown;
-  if (engine.cursorCaptured) {
+  if (engine.cursorCaptured && !neovimOwnsKeyboard) {
     Camera& camera = engine.focusedView == ViewKind::Scene ? engine.sceneCamera : engine.camera;
     double mouseX = 0.0, mouseY = 0.0;
     glfwGetCursorPos(engine.window, &mouseX, &mouseY);
@@ -66,13 +65,6 @@ void processInput(Engine& engine, float deltaTime) {
     if (keyDown(engine, GLFW_KEY_LEFT_CONTROL) || keyDown(engine, GLFW_KEY_RIGHT_CONTROL)) movement.y -= 1.0f;
     const float speed = keyDown(engine, GLFW_KEY_LEFT_SHIFT) ? camera.speed * 2.5f : camera.speed;
     camera.position = math::add(camera.position, math::scale(math::normalize(movement), speed * deltaTime));
-  }
-  if (!ImGui::GetIO().WantCaptureKeyboard) {
-    const float cubeSpeed = 1.5f * deltaTime;
-    if (keyDown(engine, GLFW_KEY_LEFT)) engine.cube.position.x -= cubeSpeed;
-    if (keyDown(engine, GLFW_KEY_RIGHT)) engine.cube.position.x += cubeSpeed;
-    if (keyDown(engine, GLFW_KEY_UP)) engine.cube.position.y += cubeSpeed;
-    if (keyDown(engine, GLFW_KEY_DOWN)) engine.cube.position.y -= cubeSpeed;
   }
   engine.cube.angle += deltaTime * 0.65f;
 }

@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -20,8 +21,10 @@ inline constexpr VkExtent2D editorViewExtent{640, 360};
 inline constexpr uint32_t gridVertexCount = 90;
 inline constexpr uint32_t shaderFileCount = 4;
 inline constexpr size_t projectNameCapacity = 64;
+inline constexpr size_t projectPathCapacity = 256;
 
 enum class ViewKind : uint32_t { Scene = 0, Game = 1 };
+enum class SceneObject : uint32_t { None, Cube };
 
 struct QueueFamilies { uint32_t graphics = UINT32_MAX; uint32_t present = UINT32_MAX; };
 struct SwapchainSupport {
@@ -65,6 +68,14 @@ struct ShaderFileState {
   std::filesystem::file_time_type modified{};
   bool exists = false;
 };
+struct NeovimCell {
+  std::string text = " ";
+  uint32_t highlight = 0;
+};
+struct NeovimHighlight {
+  uint32_t foreground = 0xD4D4D4;
+  uint32_t background = 0x1E1E1E;
+};
 struct UniformData {
   math::Mat4 mvp{};
   float globalLight = 1.0f;
@@ -96,10 +107,33 @@ struct Engine {
   std::filesystem::path activeProjectPath;
   std::filesystem::path selectedProjectFile;
   std::array<char, projectNameCapacity> newProjectName{};
+  std::array<char, projectPathCapacity> newProjectPath{};
+  std::array<char, projectPathCapacity> moveDestination{};
+  bool deleteProjectFileConfirmationOpen = false;
+  bool neovimWindowOpen = false;
+  bool neovimGridFocused = false;
+  bool neovimKeyboardFocused = false;
+  bool neovimFocusRequested = false;
+  bool neovimShutdownRequested = false;
+  bool neovimStarted = false;
+  int neovimInput = -1;
+  int neovimOutput = -1;
+  int neovimProcess = -1;
+  uint32_t neovimRequestId = 1;
+  uint32_t neovimColumns = 80;
+  uint32_t neovimRows = 24;
+  uint32_t neovimCursorRow = 0;
+  uint32_t neovimCursorColumn = 0;
+  std::string neovimMode = "normal";
+  std::vector<char> neovimBytes;
+  std::vector<NeovimCell> neovimGrid;
+  std::map<uint32_t, NeovimHighlight> neovimHighlights;
+  std::string neovimStatus = "Neovim is not running";
   std::string projectWorkspaceStatus;
   Camera camera{};
   Camera sceneCamera{{0.0f, 1.5f, 5.0f}};
   ViewKind focusedView = ViewKind::Game;
+  SceneObject selectedObject = SceneObject::None;
   Cube cube{};
   GlobalLight globalLight{};
 
@@ -138,4 +172,5 @@ struct Engine {
   std::array<std::array<void*, viewCount>, framesInFlight> uniformMapped{};
   VkDescriptorPool imguiDescriptorPool = VK_NULL_HANDLE;
   bool imguiReady = false;
+  bool dockLayoutInitialized = false;
 };

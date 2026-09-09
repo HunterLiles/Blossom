@@ -1,21 +1,19 @@
 #pragma once
 
 #include <imgui.h>
-#include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
 #include "Input.hpp"
 #include "Neovim.hpp"
+#include "WorkspaceLayout.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -233,6 +231,11 @@ void drawEmbeddedNeovim(Engine& engine) {
   ImGui::InvisibleButton("##neovim-input", gridSize);
   if (ImGui::IsItemClicked()) engine.neovimGridFocused = true;
   ImDrawList* draw = ImGui::GetWindowDrawList();
+  const bool insertCursor = engine.neovimMode.find("insert") != std::string::npos ||
+                            engine.neovimMode.find("replace") != std::string::npos;
+  const bool visualCursor = engine.neovimMode.find("visual") != std::string::npos ||
+                            engine.neovimMode.find("select") != std::string::npos;
+  const ImU32 cursorColor = neovimModeColor(engine.neovimMode);
   draw->AddRectFilled(origin, {origin.x + gridSize.x, origin.y + gridSize.y}, neovimColor(0x1e1e1e));
   for (uint32_t row = 0; row < engine.neovimRows; ++row) for (uint32_t column = 0; column < engine.neovimColumns; ++column) {
     const NeovimCell& cellData = engine.neovimGrid[static_cast<size_t>(row) * engine.neovimColumns + column];
@@ -241,10 +244,9 @@ void drawEmbeddedNeovim(Engine& engine) {
     const ImVec2 position{origin.x + column * cell.x, origin.y + row * cell.y};
     if (colors.background != 0x1e1e1e) draw->AddRectFilled(position, {position.x + cell.x, position.y + cell.y}, neovimColor(colors.background));
     if (row == engine.neovimCursorRow && column == engine.neovimCursorColumn) {
-      const ImU32 cursorColor = neovimModeColor(engine.neovimMode);
-      if (engine.neovimMode.find("insert") != std::string::npos || engine.neovimMode.find("replace") != std::string::npos)
+      if (insertCursor)
         draw->AddLine(position, {position.x, position.y + cell.y}, cursorColor, 2.0f);
-      else if (engine.neovimMode.find("visual") != std::string::npos || engine.neovimMode.find("select") != std::string::npos)
+      else if (visualCursor)
         draw->AddLine({position.x, position.y + cell.y - 1.0f}, {position.x + cell.x, position.y + cell.y - 1.0f}, cursorColor, 2.0f);
       else
         draw->AddRectFilled(position, {position.x + cell.x, position.y + cell.y}, IM_COL32(85, 165, 255, 105));
@@ -1223,43 +1225,6 @@ void drawFrame(Engine& engine) {
   if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || engine.framebufferResized) recreateSwapchain(engine);
   else check(result, "present image");
   engine.frameIndex = (engine.frameIndex + 1) % framesInFlight;
-}
-
-void beginWorkspaceDockspace(Engine& engine) {
-  ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(viewport->WorkPos);
-  ImGui::SetNextWindowSize(viewport->WorkSize);
-  ImGui::SetNextWindowViewport(viewport->ID);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-  const ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
-      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-  ImGui::Begin("Blossom Workspace", nullptr, hostFlags);
-  ImGui::PopStyleVar(2);
-  const ImGuiID dockspace = ImGui::GetID("BlossomDockspace");
-  if (!engine.dockLayoutInitialized || ImGui::DockBuilderGetNode(dockspace) == nullptr) {
-    ImGui::DockBuilderRemoveNode(dockspace);
-    ImGui::DockBuilderAddNode(dockspace, ImGuiDockNodeFlags_DockSpace);
-    ImGui::DockBuilderSetNodeSize(dockspace, viewport->WorkSize);
-    ImGuiID left = 0, center = 0, projects = 0, utility = 0, controls = 0, inspector = 0, views = 0, game = 0, scene = 0;
-    ImGui::DockBuilderSplitNode(dockspace, ImGuiDir_Left, 0.28f, &left, &center);
-    ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.43f, &projects, &left);
-    ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.38f, &utility, &controls);
-    ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, 0.24f, &inspector, &views);
-    ImGui::DockBuilderSplitNode(views, ImGuiDir_Down, 0.50f, &game, &scene);
-    ImGui::DockBuilderDockWindow("Controls", controls);
-    ImGui::DockBuilderDockWindow("Camera", utility);
-    ImGui::DockBuilderDockWindow("Engine", utility);
-    ImGui::DockBuilderDockWindow("Projects", projects);
-    ImGui::DockBuilderDockWindow("Scene", scene);
-    ImGui::DockBuilderDockWindow("Game", game);
-    ImGui::DockBuilderDockWindow("Inspector: Cube", inspector);
-    ImGui::DockBuilderFinish(dockspace);
-    engine.dockLayoutInitialized = true;
-  }
-  ImGui::DockSpace(dockspace, {0.0f, 0.0f}, ImGuiDockNodeFlags_None);
-  ImGui::End();
 }
 
 void buildInterface(Engine& engine) {

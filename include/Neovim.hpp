@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
-#include <cstring>
-#include <optional>
 
 #ifndef _WIN32
 #include <fcntl.h>

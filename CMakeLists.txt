@@ -1,36 +1,37 @@
-cmake_minimum_required(VERSION 3.14...4.3)
-project(blossom VERSION 0.1)
+cmake_minimum_required(VERSION 3.20)
+project(blossom_vulkan LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(OpenGL REQUIRED)
+find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_program(GLSLC glslc REQUIRED)
+include(cmake/ImGui.cmake)
 
-include(FetchContent)
-FetchContent_Declare(
-  imgui
-  GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG docking)
+set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+set(SHADERS
+  "${SHADER_OUTPUT_DIR}/cube.vert.spv"
+  "${SHADER_OUTPUT_DIR}/cube.frag.spv"
+  "${SHADER_OUTPUT_DIR}/grid.vert.spv"
+  "${SHADER_OUTPUT_DIR}/grid.frag.spv"
+)
+add_custom_command(
+  OUTPUT ${SHADERS}
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_OUTPUT_DIR}"
+  COMMAND ${GLSLC} -fshader-stage=vert --target-env=vulkan1.0 "${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.vert.hlsl" -o "${SHADER_OUTPUT_DIR}/cube.vert.spv"
+  COMMAND ${GLSLC} -fshader-stage=frag --target-env=vulkan1.0 "${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.frag.hlsl" -o "${SHADER_OUTPUT_DIR}/cube.frag.spv"
+  COMMAND ${GLSLC} -fshader-stage=vert --target-env=vulkan1.0 "${CMAKE_CURRENT_SOURCE_DIR}/shaders/grid.vert.hlsl" -o "${SHADER_OUTPUT_DIR}/grid.vert.spv"
+  COMMAND ${GLSLC} -fshader-stage=frag --target-env=vulkan1.0 "${CMAKE_CURRENT_SOURCE_DIR}/shaders/grid.frag.hlsl" -o "${SHADER_OUTPUT_DIR}/grid.frag.spv"
+  DEPENDS shaders/cube.vert.hlsl shaders/cube.frag.hlsl shaders/grid.vert.hlsl shaders/grid.frag.hlsl
+  VERBATIM
+)
+add_custom_target(shaders DEPENDS ${SHADERS})
 
-FetchContent_MakeAvailable(imgui)
-
-set(IMGUI
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp)
-
-add_executable(${PROJECT_NAME} src/main.cpp src/gl.c ${IMGUI})
-
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw)
-target_include_directories(
-  ${PROJECT_NAME}
-  PRIVATE ${imgui_SOURCE_DIR}
-          ${imgui_SOURCE_DIR}/backends
-          ${CMAKE_CURRENT_SOURCE_DIR}/backend
-          ${CMAKE_CURRENT_SOURCE_DIR}/external
-          ${CMAKE_CURRENT_SOURCE_DIR}/resources
-          ${CMAKE_CURRENT_SOURCE_DIR}/backend/shaders)
+add_executable(blossom_vulkan main.cpp)
+add_dependencies(blossom_vulkan shaders)
+target_include_directories(blossom_vulkan PRIVATE include)
+target_link_libraries(blossom_vulkan PRIVATE Vulkan::Vulkan glfw imgui)
+target_compile_definitions(blossom_vulkan PRIVATE SHADER_DIRECTORY="${SHADER_OUTPUT_DIR}")

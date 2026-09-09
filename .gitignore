@@ -1,2 +1,4 @@
 /build/
 /imgui.ini
+*.md
+!/README.md

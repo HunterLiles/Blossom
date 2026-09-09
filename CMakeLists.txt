@@ -34,4 +34,7 @@ add_executable(blossom_vulkan main.cpp)
 add_dependencies(blossom_vulkan shaders)
 target_include_directories(blossom_vulkan PRIVATE include)
 target_link_libraries(blossom_vulkan PRIVATE Vulkan::Vulkan glfw imgui)
-target_compile_definitions(blossom_vulkan PRIVATE SHADER_DIRECTORY="${SHADER_OUTPUT_DIR}")
+target_compile_definitions(blossom_vulkan PRIVATE
+  SHADER_DIRECTORY="${SHADER_OUTPUT_DIR}"
+  ENGINE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}"
+)

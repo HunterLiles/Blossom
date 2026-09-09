@@ -8,6 +8,8 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
+#include <string>
 #include <vector>
 
 inline constexpr uint32_t windowWidth = 1280;
@@ -16,6 +18,8 @@ inline constexpr uint32_t framesInFlight = 2;
 inline constexpr uint32_t viewCount = 2;
 inline constexpr VkExtent2D editorViewExtent{640, 360};
 inline constexpr uint32_t gridVertexCount = 90;
+inline constexpr uint32_t shaderFileCount = 4;
+inline constexpr size_t projectNameCapacity = 64;
 
 enum class ViewKind : uint32_t { Scene = 0, Game = 1 };
 
@@ -57,6 +61,10 @@ struct GlobalLight {
   bool enabled = true;
   float level = 1.0f;
 };
+struct ShaderFileState {
+  std::filesystem::file_time_type modified{};
+  bool exists = false;
+};
 struct UniformData {
   math::Mat4 mvp{};
   float globalLight = 1.0f;
@@ -70,6 +78,7 @@ struct Engine {
   bool cursorCaptured = false;
   bool firstMouse = true;
   bool tabWasDown = false;
+  bool shaderReloadWasDown = false;
   bool escapeWasDown = false;
   bool enterWasDown = false;
   bool exitConfirmationOpen = false;
@@ -79,6 +88,15 @@ struct Engine {
   double previousTime = 0.0;
   float frameTime = 0.0f;
   uint64_t renderedFrames = 0;
+  double lastShaderPollTime = 0.0;
+  bool shaderReloadRequested = false;
+  std::array<ShaderFileState, shaderFileCount> shaderFiles{};
+  std::string shaderReloadStatus = "Waiting for shader changes";
+  std::filesystem::path projectsRoot;
+  std::filesystem::path activeProjectPath;
+  std::filesystem::path selectedProjectFile;
+  std::array<char, projectNameCapacity> newProjectName{};
+  std::string projectWorkspaceStatus;
   Camera camera{};
   Camera sceneCamera{{0.0f, 1.5f, 5.0f}};
   ViewKind focusedView = ViewKind::Game;

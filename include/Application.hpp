@@ -19,6 +19,7 @@ int runApplication() {
       engine.frameTime = deltaTime;
       processInput(engine, deltaTime);
       if (glfwWindowShouldClose(engine.window)) break;
+      pollShaderReload(engine, now);
       resizeViewTargets(engine);
       buildInterface(engine);
       drawFrame(engine);

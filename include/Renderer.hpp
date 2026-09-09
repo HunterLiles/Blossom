@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -22,6 +23,94 @@
 void check(VkResult result, std::string_view action) {
   if (result != VK_SUCCESS)
     throw std::runtime_error(std::string(action) + " failed (VkResult " + std::to_string(result) + ")");
+}
+
+bool isProjectNameValid(std::string_view name) {
+  if (name.empty()) return false;
+  return std::all_of(name.begin(), name.end(), [](unsigned char character) {
+    return std::isalnum(character) || character == '_' || character == '-';
+  });
+}
+
+std::vector<std::filesystem::path> findProjects(const Engine& engine) {
+  std::vector<std::filesystem::path> projects;
+  std::error_code error;
+  for (const auto& entry : std::filesystem::directory_iterator(engine.projectsRoot, error)) {
+    if (error) break;
+    if (entry.is_symlink(error)) continue;
+    if (entry.is_directory(error)) projects.push_back(entry.path());
+  }
+  std::sort(projects.begin(), projects.end(), [](const auto& left, const auto& right) {
+    return left.filename().string() < right.filename().string();
+  });
+  return projects;
+}
+
+void initializeProjectWorkspace(Engine& engine) {
+  engine.projectsRoot = std::filesystem::path(ENGINE_DIRECTORY) / "projects";
+  std::error_code error;
+  std::filesystem::create_directories(engine.projectsRoot, error);
+  if (error) throw std::runtime_error("Cannot create projects workspace: " + error.message());
+  engine.projectWorkspaceStatus = "Create or open a game project";
+}
+
+void createProject(Engine& engine) {
+  const std::string name = engine.newProjectName.data();
+  if (!isProjectNameValid(name)) {
+    engine.projectWorkspaceStatus = "Use letters, numbers, underscores, or hyphens for the project name";
+    return;
+  }
+  const std::filesystem::path project = engine.projectsRoot / name;
+  std::error_code error;
+  if (std::filesystem::exists(project, error)) {
+    engine.projectWorkspaceStatus = "A project with that name already exists";
+    return;
+  }
+  std::filesystem::create_directories(project / "src", error);
+  if (!error) std::filesystem::create_directories(project / "assets", error);
+  if (error) {
+    engine.projectWorkspaceStatus = "Cannot create project: " + error.message();
+    return;
+  }
+  std::ofstream descriptor(project / "blossom.project");
+  if (!descriptor) {
+    engine.projectWorkspaceStatus = "Project directories were created, but its descriptor could not be written";
+    return;
+  }
+  descriptor << "name = \"" << name << "\"\n";
+  descriptor << "language = \"cpp\"\n";
+  engine.activeProjectPath = project;
+  engine.selectedProjectFile.clear();
+  engine.newProjectName.fill('\0');
+  engine.projectWorkspaceStatus = "Opened project: " + name;
+}
+
+void drawProjectFiles(Engine& engine, const std::filesystem::path& directory) {
+  std::error_code error;
+  std::vector<std::filesystem::directory_entry> entries;
+  for (const auto& entry : std::filesystem::directory_iterator(directory, error)) {
+    if (error) break;
+    entries.push_back(entry);
+  }
+  std::sort(entries.begin(), entries.end(), [](const auto& left, const auto& right) {
+    return left.path().filename().string() < right.path().filename().string();
+  });
+  for (const auto& entry : entries) {
+    std::error_code entryError;
+    if (entry.is_symlink(entryError)) continue;
+    const std::string label = entry.path().filename().string();
+    ImGui::PushID(entry.path().string().c_str());
+    if (entry.is_directory(entryError)) {
+      if (ImGui::TreeNode(label.c_str())) {
+        drawProjectFiles(engine, entry.path());
+        ImGui::TreePop();
+      }
+    } else if (entry.is_regular_file(entryError)) {
+      const bool selected = engine.selectedProjectFile == entry.path();
+      if (ImGui::Selectable(label.c_str(), selected)) engine.selectedProjectFile = entry.path();
+    }
+    ImGui::PopID();
+  }
 }
 
 void onFramebufferResize(GLFWwindow* window, int, int) {
@@ -320,7 +409,16 @@ void createViewRenderPass(Engine& engine) {
   check(vkCreateRenderPass(engine.device, &info, nullptr, &engine.viewRenderPass), "create view render pass");
 }
 
-void createPipeline(Engine& engine) {
+VkPipelineLayout createPipelineLayout(const Engine& engine) {
+  VkPipelineLayoutCreateInfo layout{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+  layout.setLayoutCount = 1;
+  layout.pSetLayouts = &engine.sceneSetLayout;
+  VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+  check(vkCreatePipelineLayout(engine.device, &layout, nullptr, &pipelineLayout), "create pipeline layout");
+  return pipelineLayout;
+}
+
+VkPipeline createPipeline(const Engine& engine, VkPipelineLayout pipelineLayout) {
   const VkShaderModule vertex = createShaderModule(engine, std::string(SHADER_DIRECTORY) + "/cube.vert.spv");
   const VkShaderModule fragment = createShaderModule(engine, std::string(SHADER_DIRECTORY) + "/cube.frag.spv");
   const std::array stages{
@@ -352,10 +450,6 @@ void createPipeline(Engine& engine) {
   VkPipelineDynamicStateCreateInfo dynamic{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
   dynamic.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
   dynamic.pDynamicStates = dynamicStates.data();
-  VkPipelineLayoutCreateInfo layout{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-  layout.setLayoutCount = 1;
-  layout.pSetLayouts = &engine.sceneSetLayout;
-  check(vkCreatePipelineLayout(engine.device, &layout, nullptr, &engine.pipelineLayout), "create pipeline layout");
   VkGraphicsPipelineCreateInfo info{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
   info.stageCount = static_cast<uint32_t>(stages.size());
   info.pStages = stages.data();
@@ -367,14 +461,16 @@ void createPipeline(Engine& engine) {
   info.pDepthStencilState = &depth;
   info.pColorBlendState = &blending;
   info.pDynamicState = &dynamic;
-  info.layout = engine.pipelineLayout;
+  info.layout = pipelineLayout;
   info.renderPass = engine.viewRenderPass;
-  check(vkCreateGraphicsPipelines(engine.device, VK_NULL_HANDLE, 1, &info, nullptr, &engine.pipeline), "create graphics pipeline");
+  VkPipeline pipeline = VK_NULL_HANDLE;
+  check(vkCreateGraphicsPipelines(engine.device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline), "create graphics pipeline");
   vkDestroyShaderModule(engine.device, fragment, nullptr);
   vkDestroyShaderModule(engine.device, vertex, nullptr);
+  return pipeline;
 }
 
-void createGridPipeline(Engine& engine) {
+VkPipeline createGridPipeline(const Engine& engine, VkPipelineLayout pipelineLayout) {
   const VkShaderModule vertex = createShaderModule(engine, std::string(SHADER_DIRECTORY) + "/grid.vert.spv");
   const VkShaderModule fragment = createShaderModule(engine, std::string(SHADER_DIRECTORY) + "/grid.frag.spv");
   const std::array stages{
@@ -416,11 +512,96 @@ void createGridPipeline(Engine& engine) {
   info.pDepthStencilState = &depth;
   info.pColorBlendState = &blending;
   info.pDynamicState = &dynamic;
-  info.layout = engine.pipelineLayout;
+  info.layout = pipelineLayout;
   info.renderPass = engine.viewRenderPass;
-  check(vkCreateGraphicsPipelines(engine.device, VK_NULL_HANDLE, 1, &info, nullptr, &engine.gridPipeline), "create grid pipeline");
+  VkPipeline pipeline = VK_NULL_HANDLE;
+  check(vkCreateGraphicsPipelines(engine.device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline), "create grid pipeline");
   vkDestroyShaderModule(engine.device, fragment, nullptr);
   vkDestroyShaderModule(engine.device, vertex, nullptr);
+  return pipeline;
+}
+
+void createPipelines(Engine& engine) {
+  VkPipelineLayout layout = createPipelineLayout(engine);
+  VkPipeline cube = VK_NULL_HANDLE;
+  VkPipeline grid = VK_NULL_HANDLE;
+  try {
+    cube = createPipeline(engine, layout);
+    grid = createGridPipeline(engine, layout);
+  } catch (...) {
+    vkDestroyPipeline(engine.device, cube, nullptr);
+    vkDestroyPipeline(engine.device, grid, nullptr);
+    vkDestroyPipelineLayout(engine.device, layout, nullptr);
+    throw;
+  }
+  engine.pipelineLayout = layout;
+  engine.pipeline = cube;
+  engine.gridPipeline = grid;
+}
+
+std::array<std::string, shaderFileCount> shaderPaths() {
+  const std::string directory = SHADER_DIRECTORY;
+  return {directory + "/cube.vert.spv", directory + "/cube.frag.spv",
+          directory + "/grid.vert.spv", directory + "/grid.frag.spv"};
+}
+
+void rememberShaderFiles(Engine& engine) {
+  const auto paths = shaderPaths();
+  for (uint32_t index = 0; index < shaderFileCount; ++index) {
+    std::error_code error;
+    const bool exists = std::filesystem::exists(paths[index], error);
+    engine.shaderFiles[index].exists = exists && !error;
+    if (engine.shaderFiles[index].exists)
+      engine.shaderFiles[index].modified = std::filesystem::last_write_time(paths[index], error);
+  }
+}
+
+bool shaderFilesChanged(const Engine& engine) {
+  const auto paths = shaderPaths();
+  for (uint32_t index = 0; index < shaderFileCount; ++index) {
+    std::error_code error;
+    const bool exists = std::filesystem::exists(paths[index], error) && !error;
+    if (exists != engine.shaderFiles[index].exists) return true;
+    if (exists && std::filesystem::last_write_time(paths[index], error) != engine.shaderFiles[index].modified)
+      return true;
+  }
+  return false;
+}
+
+bool reloadShaders(Engine& engine) {
+  VkPipelineLayout layout = VK_NULL_HANDLE;
+  VkPipeline cube = VK_NULL_HANDLE;
+  VkPipeline grid = VK_NULL_HANDLE;
+  try {
+    check(vkDeviceWaitIdle(engine.device), "wait to reload shaders");
+    layout = createPipelineLayout(engine);
+    cube = createPipeline(engine, layout);
+    grid = createGridPipeline(engine, layout);
+    vkDestroyPipeline(engine.device, engine.pipeline, nullptr);
+    vkDestroyPipeline(engine.device, engine.gridPipeline, nullptr);
+    vkDestroyPipelineLayout(engine.device, engine.pipelineLayout, nullptr);
+    engine.pipelineLayout = layout;
+    engine.pipeline = cube;
+    engine.gridPipeline = grid;
+    engine.shaderReloadStatus = "Shaders reloaded";
+    return true;
+  } catch (const std::exception& error) {
+    vkDestroyPipeline(engine.device, cube, nullptr);
+    vkDestroyPipeline(engine.device, grid, nullptr);
+    vkDestroyPipelineLayout(engine.device, layout, nullptr);
+    engine.shaderReloadStatus = std::string("Shader reload failed: ") + error.what();
+    return false;
+  }
+}
+
+void pollShaderReload(Engine& engine, double now) {
+  const bool shouldPoll = now - engine.lastShaderPollTime >= 0.25;
+  const bool changed = shouldPoll && shaderFilesChanged(engine);
+  if (!engine.shaderReloadRequested && !changed) return;
+  engine.shaderReloadRequested = false;
+  engine.lastShaderPollTime = now;
+  reloadShaders(engine);
+  rememberShaderFiles(engine);
 }
 
 void createDepthTargets(Engine& engine) {
@@ -547,8 +728,7 @@ void createSwapchain(Engine& engine) {
   createRenderPass(engine);
   createViewRenderPass(engine);
   createViewTargets(engine);
-  createPipeline(engine);
-  createGridPipeline(engine);
+  createPipelines(engine);
   engine.framebuffers.resize(imageCount);
   for (uint32_t i = 0; i < imageCount; ++i) {
     const std::array attachments{engine.imageViews[i], engine.depthTargets[i].view};
@@ -783,6 +963,35 @@ void buildInterface(Engine& engine) {
   ImGui::Text("Frame time: %.2f ms", engine.frameTime * 1000.0f);
   ImGui::Text("Swapchain: %u x %u", engine.swapchainExtent.width, engine.swapchainExtent.height);
   ImGui::Text("Images: %zu", engine.swapchainImages.size());
+  if (ImGui::Button("Reload shaders (F5)")) engine.shaderReloadRequested = true;
+  ImGui::TextWrapped("%s", engine.shaderReloadStatus.c_str());
+  ImGui::End();
+
+  ImGui::SetNextWindowPos({16.0f, 580.0f}, ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize({380.0f, 260.0f}, ImGuiCond_FirstUseEver);
+  ImGui::Begin("Projects");
+  ImGui::InputText("New project", engine.newProjectName.data(), engine.newProjectName.size());
+  ImGui::SameLine();
+  if (ImGui::Button("Create")) createProject(engine);
+  ImGui::TextWrapped("%s", engine.projectWorkspaceStatus.c_str());
+  ImGui::SeparatorText("Available projects");
+  for (const auto& project : findProjects(engine)) {
+    const bool active = engine.activeProjectPath == project;
+    if (ImGui::Selectable(project.filename().string().c_str(), active)) {
+      engine.activeProjectPath = project;
+      engine.selectedProjectFile.clear();
+      engine.projectWorkspaceStatus = "Opened project: " + project.filename().string();
+    }
+  }
+  if (!engine.activeProjectPath.empty()) {
+    ImGui::SeparatorText("Project files");
+    ImGui::TextUnformatted(engine.activeProjectPath.filename().string().c_str());
+    ImGui::BeginChild("Project file browser", {0.0f, 110.0f}, ImGuiChildFlags_Borders);
+    drawProjectFiles(engine, engine.activeProjectPath);
+    ImGui::EndChild();
+    if (!engine.selectedProjectFile.empty())
+      ImGui::TextWrapped("Selected: %s", engine.selectedProjectFile.filename().string().c_str());
+  }
   ImGui::End();
 
   const auto textureRef = [](VkDescriptorSet texture) {
@@ -838,6 +1047,7 @@ void buildInterface(Engine& engine) {
 void initialize(Engine& engine) {
   if (!glfwInit()) throw std::runtime_error("glfwInit failed");
   engine.glfwStarted = true;
+  initializeProjectWorkspace(engine);
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   engine.window = glfwCreateWindow(windowWidth, windowHeight, "Blossom Vulkan", nullptr, nullptr);
   if (!engine.window) throw std::runtime_error("glfwCreateWindow failed");
@@ -901,6 +1111,7 @@ void initialize(Engine& engine) {
     check(vkCreateFence(engine.device, &fence, nullptr, &frame.finished), "create frame fence");
   }
   initializeImGui(engine);
+  rememberShaderFiles(engine);
   engine.previousTime = glfwGetTime();
 }
 

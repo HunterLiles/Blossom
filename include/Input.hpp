@@ -40,6 +40,9 @@ void processInput(Engine& engine, float deltaTime) {
   const bool tabDown = keyDown(engine, GLFW_KEY_TAB);
   if (tabDown && !engine.tabWasDown) setCursorCapture(engine, !engine.cursorCaptured);
   engine.tabWasDown = tabDown;
+  const bool shaderReloadDown = keyDown(engine, GLFW_KEY_F5);
+  if (shaderReloadDown && !engine.shaderReloadWasDown) engine.shaderReloadRequested = true;
+  engine.shaderReloadWasDown = shaderReloadDown;
   if (engine.cursorCaptured) {
     Camera& camera = engine.focusedView == ViewKind::Scene ? engine.sceneCamera : engine.camera;
     double mouseX = 0.0, mouseY = 0.0;
